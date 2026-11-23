@@ -9,12 +9,20 @@
     "./popup": "./src/popup/main.tsx"
   },
   "scripts": {
+    "preview": "rsbuild dev -c preview/rsbuild.config.ts",
+    "screenshots": "rsbuild build -c preview/rsbuild.config.ts && tsx preview/screenshots.ts",
+    "test": "tsx --test test/*.test.ts",
     "test-types": "tsc"
   },
   "dependencies": {
+    "@devlanes/protocol": "workspace:*",
     "preact": "^11.2.0"
   },
   "devDependencies": {
-    "@types/chrome": "^0.3.7"
+    "@rsbuild/core": "^2.3.3",
+    "@rsbuild/plugin-preact": "^2.1.0",
+    "@types/chrome": "^0.3.7",
+    "@types/node": "^24.19.2",
+    "playwright": "^1.65.1"
   }
 }

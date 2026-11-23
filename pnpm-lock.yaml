@@ -203,13 +203,28 @@ importers:
 
   packages/extension:
     dependencies:
+      '@devlanes/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       preact:
         specifier: ^11.2.0
         version: 11.2.0
     devDependencies:
+      '@rsbuild/core':
+        specifier: ^2.3.3
+        version: 2.3.3
+      '@rsbuild/plugin-preact':
+        specifier: ^2.1.0
+        version: 2.1.0(@rsbuild/core@2.3.3)(@rspack/core@2.3.3(@swc/helpers@0.5.24))(preact@11.2.0)
       '@types/chrome':
         specifier: ^0.3.7
         version: 0.3.7
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      playwright:
+        specifier: ^1.65.1
+        version: 1.65.1
 
   packages/protocol: {}
 
@@ -1610,6 +1625,16 @@ packages:
 
   pino@10.4.0:
     resolution: {integrity: sha512-bk1ZMTwG/Vymx+zPoa28MhNzucFvXJWp3csrSuxuHPSMeUettaCoQ5Jvg07mtC4JGNpcfTwz41oVCnNgBK9+vA==}
+    hasBin: true
+
+  playwright-core@1.65.1:
+    resolution: {integrity: sha512-hqPpz7blSMPxWVdoeE1yiBSzXsKiVOd2k+kjCvmUywD2GPO2Dd9HfcWnq9NN0GHbNZDFgZ9JfBFr+X5/BLo0qw==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.65.1:
+    resolution: {integrity: sha512-vJ1FuoOrNwOKHUIVEvSt3jT1L+wjjDpwhwIstKtfvTh8XIG4FG4bIFuvNdMxi81LGfAhUgUZleVFaOLY4RIUUw==}
+    engines: {node: '>=20'}
     hasBin: true
 
   powershell-utils@0.2.1:
@@ -3219,6 +3244,12 @@ snapshots:
       safe-stable-stringify: 2.5.0
       sonic-boom: 4.2.1
       thread-stream: 4.2.1
+
+  playwright-core@1.65.1: {}
+
+  playwright@1.65.1:
+    dependencies:
+      playwright-core: 1.65.1
 
   powershell-utils@0.2.1: {}
 
