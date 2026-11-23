@@ -6,6 +6,9 @@
     "clientKind": "git",
     "useIgnoreFile": true
   },
+  "files": {
+    "includes": ["!packages/protocol/test/fixtures/**/*"]
+  },
   "assist": {
     "actions": {
       "source": {
