@@ -73,23 +73,22 @@ export type Holds = 'processes' | 'containers';
 
 const HOLDS: readonly Holds[] = ['processes', 'containers'];
 
-/** Error codes protocol 1 defines without `data`. */
-export type PlainErrorCode =
-  | 'hello_required'
-  | 'invalid_request'
-  | 'unknown_method'
-  | 'box_unknown'
-  | 'lane_not_on_box'
-  | 'local_lane_unknown';
-
-const PLAIN_ERROR_CODES: readonly string[] = [
+const PLAIN_ERROR_CODES = [
   'hello_required',
   'invalid_request',
   'unknown_method',
   'box_unknown',
   'lane_not_on_box',
   'local_lane_unknown'
-] satisfies PlainErrorCode[];
+] as const;
+
+/** Error codes protocol 1 defines without `data`. */
+export type PlainErrorCode = (typeof PLAIN_ERROR_CODES)[number];
+
+/** True when `code` is one of {@link PlainErrorCode}. */
+function isPlainErrorCode(code: string): code is PlainErrorCode {
+  return (PLAIN_ERROR_CODES as readonly string[]).includes(code);
+}
 
 /** `local_lane_running`'s data. `commands` free the ports, one shell command each. */
 export interface LocalLaneRunning {
@@ -323,8 +322,8 @@ function parseError(value: unknown, path: string): HostError {
       return { code, message, data: { code: string(data.code, `${path}.data.code`) } };
     }
     default:
-      return PLAIN_ERROR_CODES.includes(code)
-        ? { code: code as PlainErrorCode, message }
+      return isPlainErrorCode(code)
+        ? { code, message }
         : { code: 'unknown', host_code: code, message };
   }
 }
