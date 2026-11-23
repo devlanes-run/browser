@@ -13,10 +13,10 @@ export interface Settings {
 export const SETTINGS_KEY = 'settings';
 
 /** The settings before anyone changed them. */
-export const DEFAULT_SETTINGS: Settings = { fill: true, remember: true };
+const DEFAULT_SETTINGS: Settings = { fill: true, remember: true };
 
 /** The prefix of the `chrome.storage.local` keys that hold a project's logins. */
-export const LOGINS_PREFIX = 'logins:';
+const LOGINS_PREFIX = 'logins:';
 
 /** One saved login of a project. */
 export interface LoginRecord {

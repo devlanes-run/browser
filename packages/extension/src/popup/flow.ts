@@ -15,7 +15,7 @@ export function placeOf(box: string | null): string {
 }
 
 /** The line a successful switch leaves, or `undefined` when the view says it all. */
-export function resultFlow(result: UseResult): Flow | undefined {
+function resultFlow(result: UseResult): Flow | undefined {
   if (!result.pending) {
     return undefined;
   }

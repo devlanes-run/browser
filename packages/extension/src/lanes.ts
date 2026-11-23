@@ -129,7 +129,7 @@ export function pageIn(from: RouteAt, page: URL, target: Lane): string | undefin
  * True when `route` has a single host and a web URL. The popup opens route URLs
  * in tabs, so a URL the host sent with another scheme never reaches `tabs.create`.
  */
-export function openable(route: Route): boolean {
+function openable(route: Route): boolean {
   return openUrl(route) !== undefined;
 }
 
@@ -140,7 +140,7 @@ export function openUrl(route: Route): URL | undefined {
 }
 
 /** The first route of `lane` a browser can open. */
-export function firstRoute(lane: Lane): Route | undefined {
+function firstRoute(lane: Lane): Route | undefined {
   return lane.routes.find(openable);
 }
 

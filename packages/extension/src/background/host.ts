@@ -39,7 +39,7 @@ const BACKOFF = [1, 2, 5, 10, 30];
  * Chrome's reason when no manifest registers the host. Chrome gives native
  * messaging errors as English messages only, with no codes.
  */
-export const HOST_NOT_FOUND = 'Specified native messaging host not found.';
+const HOST_NOT_FOUND = 'Specified native messaging host not found.';
 
 /** How many `lane_switched` notices the popup keeps. */
 const NOTICES = 5;
