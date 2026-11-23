@@ -1,3 +1,5 @@
+import { LANE_URLS } from '@devlanes/extension/lane-urls';
+
 /**
  * The public key that fixes the extension id at `pggffblellmckocpflaaeligadjpkahj`,
  * the id the devlanes native host allows. Its private key was deleted, since an
@@ -27,10 +29,10 @@ export function manifest(version: string): chrome.runtime.ManifestV3 {
     background: { service_worker: 'background.js', type: 'module' },
     permissions: ['nativeMessaging', 'storage'],
     // These also expose the URLs of `*.localhost` tabs, so the extension needs no `tabs` permission.
-    host_permissions: ['https://*.localhost/*'],
+    host_permissions: [LANE_URLS],
     content_scripts: [
       {
-        matches: ['https://*.localhost/*'],
+        matches: [LANE_URLS],
         js: ['content.js'],
         // Lane pages often sign in inside frames, and `about:blank` or `blob:` frames
         // a lane page opens take its origin, so the fill reaches them too.
@@ -43,7 +45,7 @@ export function manifest(version: string): chrome.runtime.ManifestV3 {
       {
         // The login menu shows in a frame of this page on lane pages.
         resources: ['menu.html'],
-        matches: ['https://*.localhost/*'],
+        matches: [LANE_URLS],
         // A new id each browser session, so a page can't build the URL to frame `menu.html`
         // itself. Chrome versions that don't enforce it yet still load the menu.
         use_dynamic_url: true

@@ -2,6 +2,7 @@ import { HOST_NAME, type View } from '@devlanes/protocol';
 import { HostConnection, type NativePort } from './background/host';
 import { Logins } from './background/logins';
 import { isPopupSender } from './background/popup-port';
+import { LANE_URLS } from './lane-urls';
 import { badgeFor } from './lanes';
 import { parseSettings, SETTINGS_KEY, type Settings, type SettingsChanged } from './logins';
 import {
@@ -77,11 +78,16 @@ async function paint(tabId: number, url: string | undefined): Promise<void> {
 }
 
 /**
- * Repaints the badge of every lane tab. The host permissions let `tabs.query`
- * filter on `*.localhost` URLs without the `tabs` permission.
+ * Every tab on a page a lane can serve. The host permissions let `tabs.query`
+ * filter on those URLs without the `tabs` permission.
  */
+function laneTabs(): Promise<chrome.tabs.Tab[]> {
+  return chrome.tabs.query({ url: LANE_URLS });
+}
+
+/** Repaints the badge of every lane tab. */
 async function paintAll(): Promise<void> {
-  const tabs = await chrome.tabs.query({ url: 'https://*.localhost/*' });
+  const tabs = await laneTabs();
   await Promise.all(tabs.map((tab) => (tab.id === undefined ? undefined : paint(tab.id, tab.url))));
 }
 
@@ -128,7 +134,7 @@ const logins = new Logins({
 
 /** Tells the content scripts of every lane tab about new settings. */
 async function sendSettings(settings: Settings): Promise<void> {
-  const tabs = await chrome.tabs.query({ url: 'https://*.localhost/*' });
+  const tabs = await laneTabs();
   const message: SettingsChanged = { type: 'login:settings', settings };
   await Promise.all(
     tabs.map((tab) =>
