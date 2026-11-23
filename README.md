@@ -33,7 +33,7 @@
 
 The popup lists the projects and lanes [devlanes](https://github.com/devlanes-run/devlanes) runs, with their URLs. It opens the current page in another lane of the same project, keeping the path, query and hash, and switches which machine serves a lane when remote boxes have it too. The toolbar badge shows the lane number of the current tab.
 
-When you sign in on a lane, the extension saves the username and password, and offers them in a menu on every other lane of the same project. It reads only fields marked with the standard `autocomplete` tokens `username`, `email`, `current-password` and `new-password`. The popup's login settings turn the fill and the saved passwords off, and delete a project's saved logins. Passwords are stored unencrypted in the browser, so use this for test accounts only.
+When you sign in on a lane, the extension saves the username and password and offers them in a menu on every lane of the same project. It reads only fields marked with the standard `autocomplete` tokens `username`, `email`, `current-password` and `new-password`. It saves a login only when the form sends a `submit` event, so forms sent with `form.submit()` or plain `fetch` aren't saved. The popup's login settings turn the fill and the saved passwords off, and delete a project's saved logins. Passwords are stored unencrypted in the browser, so use this for test accounts only.
 
 The extension talks to devlanes through native messaging. The browser starts the devlanes binary as a native host, and the host passes a short list of requests to the daemon. Nothing listens on a port, and the extension never receives environments, secrets or logs.
 
