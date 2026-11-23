@@ -26,10 +26,10 @@ export function resultFlow(result: UseResult): Flow | undefined {
     case 'mirror':
       return {
         kind: 'note',
-        text: `${result.lane} switches to ${to} once this machine mirrors it.`
+        text: `${result.lane} switches to ${to} once this machine mirrors ${to}'s ${result.lane}.`
       };
     default:
-      return { kind: 'note', text: `The switch of ${result.lane} to ${to} is pending.` };
+      return { kind: 'note', text: `${result.lane} switches to ${to} soon.` };
   }
 }
 

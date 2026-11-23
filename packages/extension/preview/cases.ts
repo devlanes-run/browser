@@ -120,7 +120,7 @@ const BOXES_VIEW: View = {
           sources: [{ box: 'fork-b', state: 'starting', branch: null, serving: true }],
           routes: [route('app.acme1.localhost', 'web', 'starting')]
         }),
-        // This machine yielded acme@2 to fork-c, whose link is down, so nothing serves it.
+        // Nothing serves acme@2, a case the popup still has to handle.
         lane('acme', 2, {
           sources: [local('idle', 'fix/login', false)],
           routes: []

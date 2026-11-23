@@ -89,11 +89,15 @@ function StatusLine({ status, bridge }: { status: Status; bridge: Bridge }) {
         </p>
       );
     case 'host_failed':
+      // The browser's reason names causes the sentence can't, such as an allowed_origins mismatch.
       return (
-        <p class="line danger">
-          The extension lost its connection to devlanes. It tries again in a few seconds. If this
-          stays, run <Cmd>devlanes doctor</Cmd>.
-        </p>
+        <div class="line">
+          <p class="danger">
+            The extension lost its connection to devlanes. It tries again by itself. If it keeps
+            failing, run <Cmd>devlanes doctor</Cmd>.
+          </p>
+          <p class="meta">{status.detail}</p>
+        </div>
       );
   }
 }
@@ -167,7 +171,7 @@ export function App({ bridge }: { bridge: Bridge }) {
         <p class="line sec">
           {status.state === 'daemon_stopped'
             ? 'These lanes are from before devlanes stopped.'
-            : 'These lanes are from before the extension lost its connection to devlanes.'}
+            : 'These lanes are from before the connection dropped.'}
         </p>
       )}
       {view &&

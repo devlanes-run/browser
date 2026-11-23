@@ -153,6 +153,10 @@ code {
 .line {
   margin-top: 10px;
   overflow-wrap: anywhere;
+
+  .meta {
+    margin-top: 2px;
+  }
 }
 
 /* A command inside a sentence stays on one line, so it never breaks at its dashes. */
@@ -465,9 +469,13 @@ p code {
     flex: 1;
     min-width: 0;
     padding: 2px 0 4px;
-    /* A command is copied and pasted whole, so it keeps one line and scrolls when long. */
+    /*
+     * A command is copied and pasted whole, so it keeps one line and scrolls when long.
+     * The fade shows that a long one goes on. A short one ends before it.
+     */
     white-space: pre;
     overflow-x: auto;
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
   }
 }
 

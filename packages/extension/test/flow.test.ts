@@ -56,8 +56,11 @@ describe('replyFlow', () => {
       return flow?.kind === 'note' ? flow.text : flow;
     };
     assert.equal(text(true, 'connect'), 'acme@0 switches to fork-b once fork-b connects.');
-    assert.equal(text(true, 'mirror'), 'acme@0 switches to fork-b once this machine mirrors it.');
-    assert.equal(text(true, null), 'The switch of acme@0 to fork-b is pending.');
+    assert.equal(
+      text(true, 'mirror'),
+      "acme@0 switches to fork-b once this machine mirrors fork-b's acme@0."
+    );
+    assert.equal(text(true, null), 'acme@0 switches to fork-b soon.');
     assert.equal(text(false, null), undefined);
   });
 
