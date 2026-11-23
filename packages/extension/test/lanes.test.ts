@@ -5,7 +5,8 @@ import { badgeFor, findRoute, pageIn } from '../src/lanes';
 
 /** A route of `service` on `host`, served over HTTPS on the proxy's default port. */
 function route(host: string, service: string): Route {
-  return { host, url: `https://${host}`, service, state: 'ready' };
+  // A wildcard route has no single URL, so the host sends `null`, as in the contract.
+  return { host, url: host.startsWith('*.') ? null : `https://${host}`, service, state: 'ready' };
 }
 
 /** A local lane of acme with `routes`. */
@@ -98,6 +99,13 @@ describe('pageIn', () => {
     const from = findRoute(VIEW, url.hostname);
     assert.ok(from);
     assert.equal(pageIn(from, url, target), 'https://app.acme3.localhost:8443/a?b=1');
+  });
+
+  it("maps a wildcard page with the page's own port, since a wildcard route has no URL", () => {
+    const tenant = new URL('https://t1.sites.acme.localhost:8443/about?x=1#y');
+    const from = findRoute(VIEW, tenant.hostname);
+    assert.ok(from);
+    assert.equal(pageIn(from, tenant, LANE1), 'https://t1.sites.acme1.localhost:8443/about?x=1#y');
   });
 
   it('never opens a route whose URL is not a web URL', () => {

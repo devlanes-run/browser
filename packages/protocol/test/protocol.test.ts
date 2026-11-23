@@ -260,6 +260,17 @@ describe('parseView', () => {
     assert.deepEqual(parseView({ ...(view as object), version: 2 }), VIEW);
   });
 
+  it('reads a wildcard route with a null url, and refuses a route with no url', () => {
+    const wildcard = { host: '*.app.acme.localhost', url: null, service: 'web', state: 'ready' };
+    const view = viewWithLane((lane) => (lane.routes as unknown[]).push(wildcard));
+    assert.deepEqual(parseView(view).projects[0]?.lanes[0]?.routes[1], wildcard);
+    assertRefused(
+      parseView,
+      viewWithLane((lane) => delete (lane.routes as Record<string, unknown>[])[0]!.url),
+      '$.projects[0].lanes[0].routes[0].url'
+    );
+  });
+
   it('tells a lane served by this machine from one nothing serves', () => {
     const local = parseView(viewWithLane((lane) => (lane.served_by = null)));
     const unserved = parseView(viewWithLane((lane) => delete lane.served_by));

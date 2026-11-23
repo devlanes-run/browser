@@ -50,8 +50,10 @@ export interface Source {
 
 /** A hostname this machine routes for the lane. `state` is a route state such as `ready` or `idle`. */
 export interface Route {
+  /** The hostname, or a wildcard such as `*.app.acme.localhost` that matches every name below it. */
   host: string;
-  url: string;
+  /** The URL that opens the route, `null` for a wildcard host, which has no single page. */
+  url: string | null;
   service: string;
   state: string;
 }
@@ -157,7 +159,7 @@ function parseRoute(value: unknown, path: string): Route {
   const route = object(value, path);
   return {
     host: string(route.host, `${path}.host`),
-    url: string(route.url, `${path}.url`),
+    url: nullableString(route.url, `${path}.url`),
     service: string(route.service, `${path}.service`),
     state: string(route.state, `${path}.state`)
   };

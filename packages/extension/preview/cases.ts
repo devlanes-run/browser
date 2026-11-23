@@ -70,9 +70,9 @@ export const MENU_CASES: MenuCase[] = [
   }
 ];
 
-/** A ready route of `service` on `host`. */
+/** A route of `service` on `host`. A wildcard host has no URL, as the host sends it. */
 function route(host: string, service: string, state = 'ready'): Route {
-  return { host, url: `https://${host}`, service, state };
+  return { host, url: host.startsWith('*.') ? null : `https://${host}`, service, state };
 }
 
 /** This machine's source of a lane. */

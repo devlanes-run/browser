@@ -61,9 +61,9 @@ function serviceRoutes(lane: Lane, service: string, wildcard: boolean): Route[] 
   );
 }
 
-/** `route.url` as a URL, or `undefined` when it doesn't parse. */
+/** `route.url` as a URL, or `undefined` for a wildcard route's `null` or a URL that doesn't parse. */
 function parse(route: Route): URL | undefined {
-  return URL.canParse(route.url) ? new URL(route.url) : undefined;
+  return route.url !== null && URL.canParse(route.url) ? new URL(route.url) : undefined;
 }
 
 /** True when `url` is a web URL, the only kind the popup opens in a tab. */
@@ -73,11 +73,11 @@ function isWeb(url: URL | undefined): boolean {
 
 /**
  * `route.url` with `hostname` in place of its host, keeping its scheme and port,
- * or `undefined` when that isn't a web URL. A wildcard route's URL may hold the
- * `*` or be no URL at all, so HTTPS is the fallback.
+ * or `undefined` when that isn't a web URL. A wildcard route has no URL, so it
+ * takes the scheme and port of `page`, which the same devlanes proxy serves.
  */
-function withHost(route: Route, hostname: string): URL | undefined {
-  const url = parse(route) ?? new URL('https://localhost');
+function withHost(route: Route, hostname: string, page: URL): URL | undefined {
+  const url = parse(route) ?? new URL(page.origin);
   if (!isWeb(url)) {
     return undefined;
   }
@@ -106,7 +106,7 @@ export function pageIn(from: RouteAt, page: URL, target: Lane): string | undefin
     const targetBase = route && wildcardBase(route.host);
     if (route && targetBase !== undefined) {
       const labels = normalHost(page.hostname).slice(0, -base.length - 1);
-      url = withHost(route, `${labels}.${targetBase}`);
+      url = withHost(route, `${labels}.${targetBase}`, page);
     }
   }
   if (!url) {
@@ -117,7 +117,7 @@ export function pageIn(from: RouteAt, page: URL, target: Lane): string | undefin
     url = route && openable(route) ? parse(route) : undefined;
   }
   if (!url) {
-    return firstRoute(target)?.url;
+    return firstRoute(target)?.url ?? undefined;
   }
   url.pathname = page.pathname;
   url.search = page.search;
@@ -130,7 +130,13 @@ export function pageIn(from: RouteAt, page: URL, target: Lane): string | undefin
  * in tabs, so a URL the host sent with another scheme never reaches `tabs.create`.
  */
 export function openable(route: Route): boolean {
-  return wildcardBase(route.host) === undefined && isWeb(parse(route));
+  return openUrl(route) !== undefined;
+}
+
+/** The URL a tab opens for `route`, or `undefined` when the route can't be opened. */
+export function openUrl(route: Route): URL | undefined {
+  const url = parse(route);
+  return wildcardBase(route.host) === undefined && isWeb(url) ? url : undefined;
 }
 
 /** The first route of `lane` a browser can open. */

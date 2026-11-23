@@ -1,6 +1,6 @@
-import type { Lane, Route, Source } from '@devlanes/protocol';
+import type { Lane, Source } from '@devlanes/protocol';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { mainSource, openable, pageIn, type RouteAt } from '../lanes';
+import { mainSource, openUrl, pageIn, type RouteAt } from '../lanes';
 import type { UseMethod } from '../state';
 import type { Bridge } from './bridge';
 import { type Flow, placeOf, replyFlow } from './flow';
@@ -24,12 +24,24 @@ export function Shape({ state }: { state: string }) {
 }
 
 /**
- * The hover text of a route link, only when the link text hides part of the URL.
- * The text is the host and port, so a URL with a path gets its full form.
+ * A route as a link that opens `url` in a new tab. The text is the host and port,
+ * so a URL with a path gets its full form as the hover text.
  */
-function routeTitle(route: Route): string | undefined {
-  const url = new URL(route.url);
-  return url.pathname === '/' && !url.search && !url.hash ? undefined : route.url;
+function RouteLink({ bridge, url }: { bridge: Bridge; url: URL }) {
+  const hidden = url.pathname !== '/' || url.search !== '' || url.hash !== '';
+  return (
+    <a
+      class="lk"
+      href={url.href}
+      title={hidden ? url.href : undefined}
+      onClick={(event) => {
+        event.preventDefault();
+        bridge.open(url.href);
+      }}
+    >
+      {url.host}
+    </a>
+  );
 }
 
 /** A command on one line, with a button that copies it. */
@@ -148,31 +160,24 @@ export function LaneItem({ bridge, lane, siblings, here, live }: LaneProps) {
       {unserved && <Unserved lane={lane} />}
       {lane.routes.length > 0 && (
         <ul class="routes">
-          {lane.routes.map((route) => (
-            <li key={route.host}>
-              {openable(route) ? (
-                <a
-                  class="lk"
-                  href={route.url}
-                  title={routeTitle(route)}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    bridge.open(route.url);
-                  }}
-                >
-                  {new URL(route.url).host}
-                </a>
-              ) : (
-                <span class="wild" title="A wildcard host, which has no single page to open">
-                  {route.host}
-                </span>
-              )}
-              <span class="sec">{route.service}</span>
-              {route.state !== 'ready' && (
-                <span class={wordClass(route.state)}>{words(route.state)}</span>
-              )}
-            </li>
-          ))}
+          {lane.routes.map((route) => {
+            const url = openUrl(route);
+            return (
+              <li key={route.host}>
+                {url ? (
+                  <RouteLink bridge={bridge} url={url} />
+                ) : (
+                  <span class="wild" title="A wildcard host, which has no single page to open">
+                    {route.host}
+                  </span>
+                )}
+                <span class="sec">{route.service}</span>
+                {route.state !== 'ready' && (
+                  <span class={wordClass(route.state)}>{words(route.state)}</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       {targets.length > 0 && (
