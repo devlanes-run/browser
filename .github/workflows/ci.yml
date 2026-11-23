@@ -37,3 +37,31 @@ jobs:
 
       - name: Zip the extension
         run: pnpm zip
+
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/setup@v3
+        with:
+          cache: true
+          install: true
+
+      - name: Install Playwright's Chromium
+        run: pnpm --filter @devlanes/e2e exec playwright install --with-deps chromium
+
+      - name: Run the end-to-end tests
+        run: pnpm e2e
+
+      - name: Keep the failure traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results
+          path: e2e/test-results/
+          retention-days: 7
