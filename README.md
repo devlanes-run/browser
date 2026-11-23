@@ -76,7 +76,7 @@ pnpm e2e
 
 `pnpm e2e` builds the extension and runs the end-to-end tests in `e2e/tests/`. Install Playwright's Chromium once with `pnpm --filter @devlanes/e2e exec playwright install chromium`. On Linux, add `--with-deps` the first time, so Playwright installs the libraries Chromium needs. To test another build, such as an older commit's, set `E2E_DIST` to its `dist` folder and run `pnpm --filter @devlanes/e2e e2e`, which skips the build.
 
-Each test starts the browser with its own profile and a fake host that answers as devlanes would, so no devlanes install is needed. On Linux and macOS the host manifest goes into each test's own profile, so nothing outside it changes. On Windows the tests point `HKCU\Software\Chromium\NativeMessagingHosts\run.devlanes.browser` at the fake host and put back the value they found, also after a run that was killed. A Chromium you run during the tests finds the fake host too. The tests run one at a time for that reason.
+Each test starts the browser with its own profile and a fake host that answers as devlanes would, so no devlanes install is needed. On Linux and macOS the host manifest goes into each test's own profile, so nothing outside it changes. On Windows the tests point `HKCU\Software\Chromium\NativeMessagingHosts\run.devlanes.browser` at the fake host and put back the value they found. They run one at a time for that reason. If a run is killed, the next run puts the value back before its first test. A Chromium you run during the tests finds the fake host too.
 
 ## License
 
