@@ -1,0 +1,9 @@
+node_modules
+dist
+apps/*/artifacts
+.env
+.env.*
+!.env.example
+coverage
+*.log
+.worktrees/
