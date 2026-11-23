@@ -5,8 +5,10 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   writeFileSync
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { View } from '@devlanes/protocol';
@@ -18,11 +20,17 @@ export const EXTENSION_ID = 'pggffblellmckocpflaaeligadjpkahj';
 /** The native messaging host name the extension connects to. */
 const HOST_NAME = 'run.devlanes.browser';
 
-/**
- * Where Playwright's Chromium looks up the host on Windows. Chromium-branded
- * builds read the `Chromium` key first, under the current user.
- */
+/** Playwright's Chromium reads its hosts from the `Chromium` key under the current user. */
 const WINDOWS_KEY = `HKCU\\Software\\Chromium\\NativeMessagingHosts\\${HOST_NAME}`;
+
+/** The start of every name the tests put in the temp folder. */
+const TEST_FOLDER_PREFIX_BASE = 'devlanes-browser-e2e-';
+
+/**
+ * The start of every test folder's name, so a registry value that points into
+ * one can be told apart from a real host.
+ */
+export const TEST_FOLDER_PREFIX = `${TEST_FOLDER_PREFIX_BASE}run-`;
 
 const SCRIPT = fileURLToPath(new URL('../host/fake-host.mjs', import.meta.url));
 
@@ -60,8 +68,8 @@ export interface Logged {
 export class FakeHost {
   readonly dir: string;
   #manifest: string;
-  /** The Windows registry value before this test, `null` when there was none. */
-  #previous: string | null | undefined;
+  /** The Windows host key before the tests, set while this test has it changed. */
+  #backup: Backup | undefined;
 
   /**
    * @param dir The test's folder, which holds the scenario and the logs.
@@ -113,27 +121,22 @@ export class FakeHost {
       }
       return;
     }
-    this.#previous = readDefault();
+    this.#backup = backUp();
     if (installed) {
       reg('add', WINDOWS_KEY, '/ve', '/t', 'REG_SZ', '/d', this.#manifest, '/f');
     } else if (rawDefault() !== null) {
-      reg('delete', WINDOWS_KEY, '/f');
+      reg('delete', WINDOWS_KEY, '/ve', '/f');
     }
   }
 
   /** Puts back the Windows registry value from before {@link register}. */
   unregister(): void {
-    if (process.platform !== 'win32' || this.#previous === undefined) {
+    if (process.platform !== 'win32' || this.#backup === undefined) {
       return;
     }
-    if (this.#previous === null) {
-      if (rawDefault() !== null) {
-        reg('delete', WINDOWS_KEY, '/f');
-      }
-    } else {
-      reg('add', WINDOWS_KEY, '/ve', '/t', 'REG_SZ', '/d', this.#previous, '/f');
-    }
-    this.#previous = undefined;
+    restore(this.#backup);
+    rmSync(BACKUP, { force: true });
+    this.#backup = undefined;
   }
 
   /** Sends `message` to the extension through every connected host process. */
@@ -173,6 +176,65 @@ function reg(...args: string[]): string | undefined {
   }
 }
 
+/** The Windows host key as it was before the tests changed it. */
+export interface Backup {
+  /** The default value, `null` when there was none. */
+  value: string | null;
+  /** Whether the key existed, so restoring deletes only a key the tests made. */
+  existed: boolean;
+}
+
+/**
+ * Where the value from before the tests waits until they put it back. It is a
+ * fixed name in the temp folder, so the next run's global setup finds it when a
+ * run was killed before its cleanup.
+ */
+const BACKUP = join(tmpdir(), `${TEST_FOLDER_PREFIX_BASE}registry.json`);
+
+/**
+ * Saves the key as it is before the first change. A backup already on disk is
+ * the value from before this run, so it wins over what the key holds now.
+ */
+function backUp(): Backup {
+  if (existsSync(BACKUP)) {
+    return JSON.parse(readFileSync(BACKUP, 'utf8')) as Backup;
+  }
+  const backup: Backup = {
+    value: readDefault(),
+    existed: reg('query', WINDOWS_KEY) !== undefined
+  };
+  writeFileSync(BACKUP, JSON.stringify(backup));
+  return backup;
+}
+
+/**
+ * Puts the key back as `backup` says. A value the tests didn't write, such as
+ * one `devlanes setup` wrote during the run, stays.
+ */
+function restore(backup: Backup): void {
+  if (backup.value !== null) {
+    reg('add', WINDOWS_KEY, '/ve', '/t', 'REG_SZ', '/d', backup.value, '/f');
+    return;
+  }
+  if (!rawDefault()?.includes(TEST_FOLDER_PREFIX)) {
+    return;
+  }
+  if (backup.existed) {
+    reg('delete', WINDOWS_KEY, '/ve', '/f');
+  } else {
+    reg('delete', WINDOWS_KEY, '/f');
+  }
+}
+
+/** Puts back the key a killed run left changed. The global setup calls it before any test. */
+export function restoreLeftover(): void {
+  if (process.platform !== 'win32' || !existsSync(BACKUP)) {
+    return;
+  }
+  restore(JSON.parse(readFileSync(BACKUP, 'utf8')) as Backup);
+  rmSync(BACKUP, { force: true });
+}
+
 /**
  * The default value of the Windows host key, or `null` when it is missing. A
  * value that points into a test folder an earlier run left behind counts as
@@ -191,6 +253,3 @@ function rawDefault(): string | null {
       ?.trim() ?? null
   );
 }
-
-/** The start of every test folder's name, so leftovers can be told apart from a real host. */
-export const TEST_FOLDER_PREFIX = 'devlanes-browser-e2e-';

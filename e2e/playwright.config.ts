@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: 'tests',
+  globalSetup: './global-setup.ts',
   // On Windows every test points the one registry key at its own host, so tests never overlap.
   workers: 1,
   fullyParallel: false,
