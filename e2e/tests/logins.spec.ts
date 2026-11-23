@@ -471,7 +471,8 @@ test("the content script can't read the extension's storage", async ({ launch })
       })
     ).result.value as unknown;
 
-  // The world is the extension's: it can message the background.
+  // The world is this extension's content script, which can message its background.
+  expect(await run('chrome.runtime.id')).toBe(EXTENSION_ID);
   expect(await run('typeof chrome.runtime.sendMessage')).toBe('function');
   expect(
     await run(`(async () => {
