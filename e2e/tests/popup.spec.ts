@@ -1,5 +1,5 @@
 import { expect, test } from '../support/extension';
-import { BOXES, LOCAL } from '../support/views';
+import { BOXES, LOCAL, WILDCARD } from '../support/views';
 
 /** The badge colours from the devlanes palette: paint for this machine, the info blue for a box. */
 const PAINT = [245, 197, 66, 255];
@@ -66,6 +66,28 @@ test('"Open this page in" opens the same page on the other lane, next to the cur
     'https://app.acme.localhost/orders/7?tab=items#total',
     'https://app.acme1.localhost/orders/7?tab=items#total'
   ]);
+});
+
+test('a wildcard route shows without a link, and a tenant page opens on the other lane', async ({
+  launch
+}) => {
+  const lab = await launch({ scenario: { view: WILDCARD } });
+  await lab.connected();
+  const page = await lab.open('https://t1.sites.acme.localhost/about?x=1#team');
+  const popup = await lab.popup(page);
+
+  await popup.waitFor(
+    () => document.querySelector('.lane.here > .hd .ref')?.textContent === 'acme@0',
+    undefined,
+    'acme@0 as the lane of the tenant page'
+  );
+  expect(await popup.texts('.lane.here .routes .wild')).toEqual(['*.sites.acme.localhost']);
+  expect(await popup.texts('.lane.here .routes a')).toEqual(['app.acme.localhost']);
+
+  const opened = lab.context.waitForEvent('page');
+  await popup.clickIn('.chip', 'acme@1');
+  const copy = await opened;
+  await copy.waitForURL('https://t1.sites.acme1.localhost/about?x=1#team');
 });
 
 test.describe('the box switch', () => {

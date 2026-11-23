@@ -2,9 +2,9 @@
 
 import type { Lane, Route, Source, View } from '@devlanes/protocol';
 
-/** A ready route of `service` on `host`. */
+/** A ready route of `service` on `host`. A wildcard host has no URL, as the host sends it. */
 export function route(host: string, service: string): Route {
-  return { host, url: `https://${host}`, service, state: 'ready' };
+  return { host, url: host.startsWith('*.') ? null : `https://${host}`, service, state: 'ready' };
 }
 
 /** This machine's source of a lane. */
@@ -74,6 +74,24 @@ export const BOXES: View = {
           routes: [route('app.acme.localhost', 'web')]
         }),
         lane('acme', 1, { routes: [route('app.acme1.localhost', 'web')] })
+      ]
+    }
+  ]
+};
+
+/** Two acme lanes with an app and a wildcard for tenant sites, which has no URL. */
+export const WILDCARD: View = {
+  boxes: [],
+  projects: [
+    {
+      name: 'acme',
+      lanes: [
+        lane('acme', 0, {
+          routes: [route('app.acme.localhost', 'web'), route('*.sites.acme.localhost', 'sites')]
+        }),
+        lane('acme', 1, {
+          routes: [route('app.acme1.localhost', 'web'), route('*.sites.acme1.localhost', 'sites')]
+        })
       ]
     }
   ]
