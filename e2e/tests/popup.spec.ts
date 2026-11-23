@@ -1,3 +1,4 @@
+import { contentWorld } from '../support/content-world';
 import { expect, test } from '../support/extension';
 import { BOXES, LOCAL, WILDCARD } from '../support/views';
 
@@ -88,6 +89,28 @@ test('a wildcard route shows without a link, and a tenant page opens on the othe
   await popup.clickIn('.chip', 'acme@1');
   const copy = await opened;
   await copy.waitForURL('https://t1.sites.acme1.localhost/about?x=1#team');
+});
+
+test("a lane page's content script can't open the popup's port", async ({ launch }) => {
+  const lab = await launch({ scenario: { view: LOCAL } });
+  await lab.connected();
+  const page = await lab.open('https://app.acme.localhost/');
+  const run = await contentWorld(lab.context, page);
+
+  // The background closes a port it refuses, and an accepted one gets a snapshot at
+  // once, so whichever comes first is the answer.
+  const got = await run(`new Promise((resolve) => {
+    const port = chrome.runtime.connect({ name: 'popup' });
+    port.onMessage.addListener((message) => resolve([message.type]));
+    port.onDisconnect.addListener(() => resolve([]));
+    port.postMessage({ type: 'use', id: 1, method: 'use', params: { lane: 'acme@0', box: null } });
+  })`);
+  expect(got).toEqual([]);
+  expect(lab.host.requests().map((each) => each.method)).not.toContain('use');
+
+  // The real popup still connects and gets the lanes.
+  const popup = await lab.popup(page);
+  await popup.waitForText('acme@1');
 });
 
 test.describe('the box switch', () => {

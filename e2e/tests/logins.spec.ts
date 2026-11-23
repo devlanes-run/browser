@@ -1,4 +1,5 @@
 import type { Frame, Page } from '@playwright/test';
+import { contentWorld } from '../support/content-world';
 import { expect, type Lab, test } from '../support/extension';
 import { EXTENSION_ID } from '../support/host';
 import type { Popup } from '../support/popup';
@@ -444,33 +445,7 @@ test("a lane page can't load the menu from the extension's static URL", async ({
 test("the content script can't read the extension's storage", async ({ launch }) => {
   const lab = await start(launch);
   const page = await openLane(lab, 'https://app.acme1.localhost/login');
-  const cdp = await lab.context.newCDPSession(page);
-  const worlds: { id: number; name: string; type: string | undefined }[] = [];
-  cdp.on('Runtime.executionContextCreated', ({ context }) => {
-    worlds.push({ id: context.id, name: context.name, type: context.auxData?.type });
-  });
-  // Enabling the domain reports every context that already exists.
-  await cdp.send('Runtime.enable');
-  let world: number | undefined;
-  await expect
-    .poll(
-      () => {
-        world = worlds.find((each) => each.type === 'isolated' && each.name === 'devlanes')?.id;
-        return world;
-      },
-      { message: "the content script's isolated world" }
-    )
-    .toBeDefined();
-  /** Runs `expression` in the content script's world and returns its value. */
-  const run = async (expression: string) =>
-    (
-      await cdp.send('Runtime.evaluate', {
-        contextId: world as number,
-        expression,
-        awaitPromise: true,
-        returnByValue: true
-      })
-    ).result.value as unknown;
+  const run = await contentWorld(lab.context, page);
 
   // The world is this extension's content script, which can message its background.
   expect(await run('chrome.runtime.id')).toBe(EXTENSION_ID);
