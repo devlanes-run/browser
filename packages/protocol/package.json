@@ -1,0 +1,16 @@
+{
+  "name": "@devlanes/protocol",
+  "private": true,
+  "description": "Types and parsers for the messages of the devlanes native host",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "lint-ci": "biome ci .",
+    "test": "tsx --test test/*.test.ts",
+    "test-types": "tsc --noEmit"
+  }
+}
