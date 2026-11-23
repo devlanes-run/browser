@@ -84,8 +84,9 @@ test(`the popup paints within ${BOUND_MS} ms while the service worker is busy`, 
   // An extension page opens the popup, since the worker can't while it is busy.
   const opener = await lab.open(`chrome-extension://${EXTENSION_ID}/manifest.json`);
 
-  // A slow worker start blocks the event loop like this. The worker says when it
-  // stops, before it starts, so the test knows the popup opened while it was busy.
+  // A slow worker start blocks the event loop like this. Before it spins, the worker
+  // stores when it will stop, so the test can check that the popup opened while it
+  // was busy.
   lab.worker
     .evaluate((ms) => {
       const end = Date.now() + ms;
