@@ -5,9 +5,10 @@ TypeScript, a pnpm workspace, Node.js 24.16 or later. Shared packages live in `p
 - `packages/protocol` owns the types and parsers of the native host contract (protocol 1). The other side is `crates/browser-host` in devlanes-run/devlanes. A change to the contract lands in both repos.
 - `packages/extension` owns the background, popup and content code. It stays browser agnostic.
 - `apps/chromium` owns the manifest, the rsbuild config and the icons for Chrome, Chromium, Brave and Edge. The manifest's `key` fixes the extension id, which the devlanes host allows. Never change it.
+- `e2e` owns the end-to-end tests of the built extension and the fake devlanes host they run against.
 - A new manifest permission needs a reason in the PR.
 
-A new package is `private: true` and `type: module`. It gets a `build`, `test` or `test-types` script only when it has something for that script to run, and the root runs them with `pnpm -r`. Tests live in `<package>/test/*.test.ts`.
+A new package is `private: true` and `type: module`. It gets a `build`, `test` or `test-types` script only when it has something for that script to run, and the root runs them with `pnpm -r`. Tests live in `<package>/test/*.test.ts`, and the end-to-end tests in `e2e/tests/*.spec.ts`.
 
 Biome owns the formatting and runs once from the root over every file. `pnpm lint-fix` applies its fixes.
 
@@ -57,7 +58,11 @@ pnpm build
 pnpm test-types
 pnpm test
 pnpm zip
+pnpm e2e
 ```
 
 - Tests run with `tsx --test`.
+- `pnpm e2e` builds the extension and runs the Playwright suite in `e2e/tests/` against it. Install the browser once with `pnpm --filter @devlanes/e2e exec playwright install chromium`. A change to the popup, the background or the login fill needs it to pass.
+- End-to-end tests wait on something the page or the host does, never on a fixed sleep, and every wait has a bound. A test that checks something didn't happen first waits for a later event that must come after it.
+- The fake host in `e2e/host/fake-host.mjs` plays the JSON scenario a test gives it and logs every request. On Windows the tests share one registry key, so they run one at a time.
 - When a test fails intermittently, locally or in CI, fix the flake instead of rerunning it until it passes.

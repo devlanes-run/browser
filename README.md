@@ -59,6 +59,7 @@ The repository is a pnpm workspace:
 - `packages/protocol` holds the types and parsers of the messages the devlanes native host sends.
 - `packages/extension` holds the background, the popup, and the content script and menu of the login fill, with no code tied to one browser.
 - `apps/chromium` builds them with rsbuild into an extension for Chromium-based browsers.
+- `e2e` tests the built extension in Playwright's Chromium, with a fake devlanes host.
 
 `pnpm -C packages/extension preview` serves the popup with a fake background, and `?case=<name>` picks one of the states in `packages/extension/preview/cases.ts`. `menu.html?menu=<name>` shows the login menu the same way. `pnpm -C packages/extension screenshots` renders every case at its real size in light and dark into `packages/extension/preview/screenshots/`, which Git ignores. It needs Playwright's Chromium, from `npx playwright install chromium`.
 
@@ -70,7 +71,10 @@ pnpm build
 pnpm test-types
 pnpm test
 pnpm zip
+pnpm e2e
 ```
+
+`pnpm e2e` builds the extension and runs the end-to-end tests in `e2e/tests/`. Install Playwright's Chromium once with `pnpm --filter @devlanes/e2e exec playwright install chromium`. Each test starts the browser with its own profile and a fake host that answers as devlanes would, so no devlanes install is needed. On Windows the tests point `HKCU\Software\Chromium\NativeMessagingHosts\run.devlanes.browser` at the fake host and put back the value they found. They run one at a time for that reason.
 
 ## License
 
