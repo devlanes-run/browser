@@ -53,9 +53,17 @@ function serviceRoutes(lane: Lane, service: string, wildcard: boolean): Route[] 
   );
 }
 
-/** `route.url` with `hostname` in place of its host, keeping its scheme and port. */
+/** `route.url` as a URL, or `undefined` when it doesn't parse. */
+function parse(route: Route): URL | undefined {
+  return URL.canParse(route.url) ? new URL(route.url) : undefined;
+}
+
+/**
+ * `route.url` with `hostname` in place of its host, keeping its scheme and port.
+ * A wildcard route's URL may hold the `*` or be no URL at all, so HTTPS is the fallback.
+ */
 function withHost(route: Route, hostname: string): URL {
-  const url = new URL(route.url);
+  const url = parse(route) ?? new URL('https://localhost');
   url.hostname = hostname;
   return url;
 }
@@ -89,9 +97,7 @@ export function pageIn(from: RouteAt, page: URL, target: Lane): string | undefin
     const index =
       base === undefined ? serviceRoutes(from.lane, service, false).indexOf(from.route) : 0;
     const route = exact[Math.max(0, index)] ?? exact[0];
-    if (route) {
-      url = new URL(route.url);
-    }
+    url = route && parse(route);
   }
   if (!url) {
     return firstRoute(target)?.url;
