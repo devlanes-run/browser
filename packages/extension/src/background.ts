@@ -5,12 +5,10 @@ import {
   type BackgroundMessage,
   POPUP_PORT,
   type PopupMessage,
+  SNAPSHOT_KEY,
   type Snapshot,
   type UseReply
 } from './state';
-
-/** The `chrome.storage.session` key of the saved snapshot. */
-const SAVED = 'snapshot';
 
 /** Badge colours from the devlanes palette: paint for this machine, the info blue for a box. */
 const BADGE_LOCAL = { background: '#f5c542', text: '#24231f' };
@@ -45,8 +43,7 @@ const host = new HostConnection({
 /** Sends the snapshot to open popups, saves it for the next service worker and repaints badges. */
 function changed(snapshot: Snapshot): void {
   post({ type: 'snapshot', snapshot });
-  const { status: _, ...saved } = snapshot;
-  chrome.storage.session.set({ [SAVED]: saved }).catch((error) => console.error(error));
+  chrome.storage.session.set({ [SNAPSHOT_KEY]: snapshot }).catch((error) => console.error(error));
   // The host sends a view only when it differs, so identity is enough to skip repaints.
   if (snapshot.view !== paintedView) {
     paintedView = snapshot.view;
@@ -84,11 +81,13 @@ async function paintAll(): Promise<void> {
 
 /** Loads what the previous service worker saved, since Chrome stops idle workers. */
 async function restore(): Promise<void> {
-  const saved = (await chrome.storage.session.get(SAVED))[SAVED] as
-    | Omit<Snapshot, 'status'>
+  const saved = (await chrome.storage.session.get(SNAPSHOT_KEY))[SNAPSHOT_KEY] as
+    | Snapshot
     | undefined;
   if (saved) {
-    host.restore(saved);
+    // The saved status belonged to the previous worker's port, so only the data comes back.
+    const { status: _, ...data } = saved;
+    host.restore(data);
   }
 }
 
@@ -118,9 +117,10 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener((message: PopupMessage) => {
     answer(port, message).catch((error) => console.error(error));
   });
-  // A popup opening after `devlanes setup --browser` connects again, with no browser restart.
-  host.ensure();
+  // The popup gets what is known first, so nothing it shows waits for the native host.
   port.postMessage({ type: 'snapshot', snapshot: host.snapshot } satisfies BackgroundMessage);
+  // A popup opening after `devlanes setup` connects again, with no browser restart.
+  host.ensure();
 });
 
 chrome.tabs.onUpdated.addListener((tabId, change, tab) => {

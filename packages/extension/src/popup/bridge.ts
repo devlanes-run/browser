@@ -3,6 +3,7 @@ import {
   type BackgroundMessage,
   POPUP_PORT,
   type PopupMessage,
+  SNAPSHOT_KEY,
   type Snapshot,
   type UseMethod,
   type UseReply
@@ -18,7 +19,7 @@ export interface Bridge {
   dismiss(notice: number): void;
   /** The URL of the active tab, when the extension may read it. */
   currentPage(): Promise<string | undefined>;
-  /** Opens `url` in a new tab. */
+  /** Opens `url` in a new tab next to the current one. */
   open(url: string): void;
   /** Puts `text` on the clipboard. */
   copy(text: string): Promise<void>;
@@ -33,14 +34,33 @@ export function chromeBridge(): Bridge {
   const listeners = new Set<(snapshot: Snapshot) => void>();
   const pending = new Map<number, (reply: UseReply) => void>();
   let last: Snapshot | undefined;
+  let live = false;
   let nextId = 1;
+
+  /** Keeps `snapshot` as the latest and hands it to every listener. */
+  const publish = (snapshot: Snapshot) => {
+    last = snapshot;
+    for (const listener of listeners) {
+      listener(snapshot);
+    }
+  };
+
+  // A stopped service worker can take a while to start and answer. The snapshot it
+  // saved last lets the popup show the lanes before that, and the live one replaces it.
+  chrome.storage.session.get(SNAPSHOT_KEY).then(
+    (items) => {
+      const saved = items[SNAPSHOT_KEY] as Snapshot | undefined;
+      if (saved && !live) {
+        publish(saved);
+      }
+    },
+    (error) => console.error(error)
+  );
 
   port.onMessage.addListener((message: BackgroundMessage) => {
     if (message.type === 'snapshot') {
-      last = message.snapshot;
-      for (const listener of listeners) {
-        listener(message.snapshot);
-      }
+      live = true;
+      publish(message.snapshot);
     } else {
       pending.get(message.id)?.(message.reply);
       pending.delete(message.id);
@@ -71,7 +91,11 @@ export function chromeBridge(): Bridge {
       return tab?.url;
     },
     open(url) {
-      chrome.tabs.create({ url }).catch((error) => console.error(error));
+      // Next to the current tab, so the page and its copy in another lane sit side by side.
+      chrome.tabs
+        .query({ active: true, currentWindow: true })
+        .then(([tab]) => chrome.tabs.create(tab ? { url, index: tab.index + 1 } : { url }))
+        .catch((error) => console.error(error));
     },
     copy(text) {
       return navigator.clipboard.writeText(text);

@@ -55,3 +55,12 @@ export type BackgroundMessage =
 
 /** The name of the port the popup opens to the background. */
 export const POPUP_PORT = 'popup';
+
+/**
+ * The `chrome.storage.session` key of the last snapshot. The background writes it
+ * on every change. The popup reads it to paint before the background answers.
+ */
+export const SNAPSHOT_KEY = 'snapshot';
+
+/** What the popup shows before any snapshot arrives. */
+export const CONNECTING: Snapshot = { status: { state: 'connecting' }, notices: [] };

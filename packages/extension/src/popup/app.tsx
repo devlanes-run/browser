@@ -2,7 +2,7 @@ import { PROTOCOL_VERSION, type Project } from '@devlanes/protocol';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { findRoute } from '../lanes';
-import type { Snapshot, Status } from '../state';
+import { CONNECTING, type Snapshot, type Status } from '../state';
 import type { Bridge } from './bridge';
 import { Cross, LaneItem } from './lane';
 import { boxDown, type ShapeName } from './words';
@@ -95,7 +95,8 @@ function ordered(projects: Project[], first: Project | undefined): Project[] {
 
 /** The popup: the connection, notices, then every project with its lanes. */
 export function App({ bridge }: { bridge: Bridge }) {
-  const [snapshot, setSnapshot] = useState<Snapshot | undefined>();
+  // The first paint never waits for the background: it shows "Connecting" until a snapshot comes.
+  const [snapshot, setSnapshot] = useState<Snapshot>(CONNECTING);
   const [page, setPage] = useState<URL | undefined>();
 
   useEffect(() => bridge.watch(setSnapshot), [bridge]);
@@ -106,9 +107,6 @@ export function App({ bridge }: { bridge: Bridge }) {
     );
   }, [bridge]);
 
-  if (!snapshot) {
-    return null;
-  }
   const { status, view, notices } = snapshot;
   const live = status.state === 'running';
   const at = view && page ? findRoute(view, page.hostname) : undefined;
