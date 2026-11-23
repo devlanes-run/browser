@@ -208,15 +208,21 @@ function backUp(): Backup {
 }
 
 /**
- * Puts the key back as `backup` says. A value the tests didn't write, such as
- * one `devlanes setup` wrote during the run, stays.
+ * Puts the key back as `backup` says, unless something other than the tests
+ * changed it during the run, such as `devlanes setup`. Then the new value stays.
  */
 function restore(backup: Backup): void {
+  const current = rawDefault();
+  // A missing value is the tests' too: the test without a host removes it.
+  const ours = current === null || current.includes(TEST_FOLDER_PREFIX);
+  if (!ours) {
+    return;
+  }
   if (backup.value !== null) {
     reg('add', WINDOWS_KEY, '/ve', '/t', 'REG_SZ', '/d', backup.value, '/f');
     return;
   }
-  if (!rawDefault()?.includes(TEST_FOLDER_PREFIX)) {
+  if (current === null) {
     return;
   }
   if (backup.existed) {
