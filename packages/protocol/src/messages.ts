@@ -73,10 +73,7 @@ export type Holds = 'processes' | 'containers';
 
 const HOLDS: readonly Holds[] = ['processes', 'containers'];
 
-/**
- * Error codes protocol 1 defines without `data`. A plain error may also carry a
- * code a newer host added.
- */
+/** Error codes protocol 1 defines without `data`. */
 export type PlainErrorCode =
   | 'hello_required'
   | 'invalid_request'
@@ -85,6 +82,15 @@ export type PlainErrorCode =
   | 'lane_not_on_box'
   | 'local_lane_unknown';
 
+const PLAIN_ERROR_CODES: readonly string[] = [
+  'hello_required',
+  'invalid_request',
+  'unknown_method',
+  'box_unknown',
+  'lane_not_on_box',
+  'local_lane_unknown'
+] satisfies PlainErrorCode[];
+
 /** `local_lane_running`'s data. `commands` free the ports, one shell command each. */
 export interface LocalLaneRunning {
   holds: Holds;
@@ -92,23 +98,34 @@ export interface LocalLaneRunning {
   commands: string[];
 }
 
-/** An error the popup only shows by its `message`. */
+/** An error protocol 1 defines without `data`. The popup only shows its `message`. */
 export interface PlainError {
-  code: PlainErrorCode | (string & {});
+  code: PlainErrorCode;
+  message: string;
+}
+
+/**
+ * An error whose code a newer host added. `host_code` holds that code, and the
+ * popup only shows `message`.
+ */
+export interface UnknownError {
+  code: 'unknown';
+  host_code: string;
   message: string;
 }
 
 /**
  * An error reply's `error`. `message` is ready to show as it is. Codes whose
- * `data` the popup acts on are parsed strictly, and every other code is a
- * {@link PlainError}.
+ * `data` the popup acts on are parsed strictly, and a code protocol 1 doesn't
+ * define reads as an {@link UnknownError}.
  */
 export type HostError =
   | { code: 'protocol_mismatch'; message: string; data: { supported: number[] } }
   | { code: 'local_lane_running'; message: string; data: LocalLaneRunning }
   | { code: 'containers_hold_ports'; message: string; data: { commands: string[] } }
   | { code: 'daemon_failed'; message: string; data: { code: string } }
-  | PlainError;
+  | PlainError
+  | UnknownError;
 
 /** A daemon state change, with a sentence to show when the daemon isn't usable. */
 export interface DaemonStatus {
@@ -266,7 +283,7 @@ function parseNotice(value: unknown): Notice | undefined {
 
 /**
  * Reads an error reply's `error`. Codes whose `data` the popup acts on must carry
- * it, and any other code reads as a plain error.
+ * it, and a code protocol 1 doesn't define reads as `unknown`.
  */
 function parseError(value: unknown, path: string): HostError {
   const error = object(value, path);
@@ -306,6 +323,8 @@ function parseError(value: unknown, path: string): HostError {
       return { code, message, data: { code: string(data.code, `${path}.data.code`) } };
     }
     default:
-      return { code, message };
+      return PLAIN_ERROR_CODES.includes(code)
+        ? { code: code as PlainErrorCode, message }
+        : { code: 'unknown', host_code: code, message };
   }
 }

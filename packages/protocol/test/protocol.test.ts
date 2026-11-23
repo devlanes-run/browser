@@ -154,12 +154,25 @@ describe('parseHostMessage', () => {
     assert.deepEqual(parseHostMessage({ event: 'notice', data }), { event: 'notice', data });
   });
 
-  it('keeps an unknown error code as a plain error', () => {
-    const message = { id: 1, error: { code: 'teapot', message: 'No coffee.', data: { cups: 0 } } };
+  it('reads an unknown error code as unknown, keeping the host code', () => {
+    const message = {
+      id: 1,
+      error: { code: 'lane_locked', message: 'acme@0 is locked.', data: { since: 0 } }
+    };
     assert.deepEqual(parseHostMessage(message), {
       id: 1,
-      error: { code: 'teapot', message: 'No coffee.' }
+      error: { code: 'unknown', host_code: 'lane_locked', message: 'acme@0 is locked.' }
     });
+  });
+
+  it('narrows an error on its code', () => {
+    const reply = parseHostMessage(MESSAGES.find((message) => message.id === 4));
+    assert.ok('error' in reply);
+    // Reading `data` here only type-checks while `HostError` narrows on `code`.
+    if (reply.error.code !== 'local_lane_running') {
+      assert.fail(`read ${reply.error.code}`);
+    }
+    assert.deepEqual(reply.error.data.commands, ['devlanes stop --lane acme@0']);
   });
 
   it('reads a missing or null daemon message as absent', () => {
