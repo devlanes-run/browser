@@ -1,0 +1,45 @@
+// Renders every preview case at the popup's size, in light and dark, with
+// Playwright's Chromium. Run `pnpm screenshots` in packages/extension. The
+// browser comes from `npx playwright install chromium`.
+
+import { mkdirSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { chromium } from 'playwright';
+import { CASES } from './cases';
+
+const index = pathToFileURL(fileURLToPath(new URL('./dist/index.html', import.meta.url)));
+const out = fileURLToPath(new URL('./screenshots/', import.meta.url));
+mkdirSync(out, { recursive: true });
+
+const browser = await chromium.launch();
+try {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    // Chrome sizes a popup to its content, so the shots take the full page from a short
+    // viewport. Past 600 px Chrome scrolls, and the shot shows what scrolls.
+    const page = await browser.newPage({
+      viewport: { width: 380, height: 120 },
+      deviceScaleFactor: 2,
+      colorScheme,
+      reducedMotion: 'reduce'
+    });
+    for (const preview of CASES) {
+      const url = new URL(index);
+      url.searchParams.set('case', preview.name);
+      await page.goto(url.href);
+      await page.locator('header.top').waitFor();
+      for (const name of preview.clicks ?? []) {
+        await page.getByRole('button', { name, exact: true }).click();
+      }
+      if (preview.clicks) {
+        // The fake background answers after 300 ms. Wait for the answer, not for a fixed time.
+        await page.locator('.flow:not([role="status"])').waitFor();
+      }
+      const file = `${out}${preview.name}-${colorScheme}.png`;
+      await page.screenshot({ path: file, fullPage: true });
+      console.log(file);
+    }
+    await page.close();
+  }
+} finally {
+  await browser.close();
+}

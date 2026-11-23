@@ -1,4 +1,5 @@
 import type { Lane, Source, UseResult } from '@devlanes/protocol';
+import { Fragment } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { mainSource, openable, pageIn, type RouteAt } from '../lanes';
 import type { UseMethod, UseReply } from '../state';
@@ -86,7 +87,15 @@ function Command({ bridge, command }: { bridge: Bridge; command: string }) {
   }, [copied]);
   return (
     <li class="cmd">
-      <code>{command}</code>
+      {/* One box per word, so a container name such as acme-mail-1 never wraps at its hyphens. */}
+      <code>
+        {command.split(' ').map((word, index) => (
+          <Fragment key={index}>
+            {index > 0 && ' '}
+            <span>{word}</span>
+          </Fragment>
+        ))}
+      </code>
       <button
         type="button"
         class="copy"
@@ -230,7 +239,8 @@ export function LaneItem({ bridge, lane, siblings, here, live }: LaneProps) {
               title={each.skipped ? skipWords(each.skipped.cause) : words(each.state)}
               onClick={() => choose(each)}
             >
-              <Shape state={each.state} />
+              {/* The title carries the state, so the name stays the machine's. */}
+              <span class={`st ${shapeOf(each.state)}`} aria-hidden="true" />
               {each.box ?? 'This machine'}
             </button>
           ))}

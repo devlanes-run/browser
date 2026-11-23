@@ -72,7 +72,7 @@ function StatusLine({ status }: { status: Status }) {
       return (
         <p class="line danger">
           {Math.max(...status.supported) > PROTOCOL_VERSION
-            ? 'This devlanes is newer than the extension. Update the extension from devlanes-run/browser.'
+            ? 'This version of devlanes is newer than the extension. Update the extension from devlanes-run/browser, then reopen this popup.'
             : 'This extension needs a newer devlanes. Update devlanes, then reopen this popup.'}
         </p>
       );

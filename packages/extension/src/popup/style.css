@@ -144,7 +144,7 @@ code {
 
 /* Old data reads as old while the daemon or the host is away. */
 main.dim .project {
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .meta {
@@ -460,7 +460,12 @@ main.dim .project {
     flex: 1;
     min-width: 0;
     padding-top: 2px;
-    overflow-wrap: anywhere;
+
+    span {
+      display: inline-block;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
   }
 }
 

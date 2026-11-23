@@ -7,3 +7,4 @@ apps/*/artifacts
 coverage
 *.log
 .worktrees/
+packages/extension/preview/screenshots/
