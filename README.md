@@ -31,7 +31,7 @@
 
 <br />
 
-The extension is in development, and its popup only shows "devlanes" for now. It will list the projects and lanes [devlanes](https://github.com/devlanes-run/devlanes) runs, with their URLs, open the current page in another lane of the same project, switch which machine serves a lane, and offer the logins typed on one lane on every other lane of the project.
+The popup lists the projects and lanes [devlanes](https://github.com/devlanes-run/devlanes) runs, with their URLs. It opens the current page in another lane of the same project, keeping the path, query and hash, and switches which machine serves a lane when remote boxes have it too. The toolbar badge shows the lane number of the current tab. Offering the logins typed on one lane on every other lane of the project is still in development.
 
 The extension talks to devlanes through native messaging. The browser starts the devlanes binary as a native host, and the host passes a short list of requests to the daemon. Nothing listens on a port, and the extension never receives environments, secrets or logs.
 
@@ -57,6 +57,8 @@ The repository is a pnpm workspace:
 - `packages/protocol` holds the types and parsers of the messages the devlanes native host sends.
 - `packages/extension` holds the background and the popup, with no code tied to one browser.
 - `apps/chromium` builds them with rsbuild into an extension for Chromium-based browsers.
+
+`pnpm -C packages/extension preview` serves the popup with a fake background, and `?case=<name>` picks one of the states in `packages/extension/preview/cases.ts`. `pnpm -C packages/extension screenshots` renders every case at the popup's size in light and dark into `packages/extension/preview/screenshots/`, which Git ignores. It needs Playwright's Chromium, from `npx playwright install chromium`.
 
 Before you push, run the checks CI runs:
 
