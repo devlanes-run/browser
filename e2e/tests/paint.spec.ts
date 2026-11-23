@@ -31,10 +31,10 @@ const SAMPLES = 3;
 const BUSY_MS = 8000;
 
 /**
- * Opens the popup over `page` once, then {@link SAMPLES} more times, and gives
- * the fastest first contentful paint with the last popup, still open. Every
- * sample goes into the report, so a CI log shows how close a runner comes to
- * the bound.
+ * Opens the popup over `page` once, then {@link SAMPLES} more times. Returns the
+ * fastest first contentful paint and the last popup, which stays open. Every
+ * sample goes into the report, so a CI log shows how close a runner comes to the
+ * bound.
  */
 async function fastestPaint(
   lab: Lab,
