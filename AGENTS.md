@@ -5,6 +5,11 @@ TypeScript, a pnpm workspace, Node.js 24.16 or later. Shared packages live in `p
 - `packages/protocol` owns the types and parsers of the native host contract (protocol 1). The other side is `crates/browser-host` in devlanes-run/devlanes. A change to the contract lands in both repos.
 - `packages/extension` owns the background, popup and content code. It stays browser agnostic.
 - `apps/chromium` owns the manifest, the rsbuild config and the icons for Chrome, Chromium, Brave and Edge. The manifest's `key` fixes the extension id, which the devlanes host allows. Never change it.
+- A new manifest permission needs a reason in the PR.
+
+A new package is `private: true` and `type: module`. It has only the scripts among `build`, `test` and `test-types` that it has something to run for, and the root runs them with `pnpm -r`. Tests live in `<package>/test/*.test.ts`.
+
+Biome owns the formatting and runs once from the root over every file. `pnpm lint-fix` applies its fixes.
 
 The extension never receives environments, secrets or logs, and the host never forwards daemon JSON as it is. Settings live in the extension, per browser. Nothing goes into the devlanes config or the daemon.
 

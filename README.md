@@ -27,13 +27,11 @@
 
 # devlanes browser extension
 
-> Your devlanes lanes in Chrome, Chromium, Brave and Edge.
+> Your lanes in Chrome, Chromium, Brave and Edge.
 
 <br />
 
-The extension lists the projects and lanes [devlanes](https://github.com/devlanes-run/devlanes) runs, with their URLs. It opens the current page in another lane of the same project, keeping the path, query and hash. When a lane runs on a remote box, it switches which machine serves it. It also offers the logins you typed on one lane on every other lane of the project.
-
-It is in development. The popup only shows its name for now.
+The extension is in development, and its popup only shows "devlanes" for now. It will list the projects and lanes [devlanes](https://github.com/devlanes-run/devlanes) runs, with their URLs, open the current page in another lane of the same project, switch which machine serves a lane, and offer the logins typed on one lane on every other lane of the project.
 
 The extension talks to devlanes through native messaging. The browser starts the devlanes binary as a native host, and the host passes a short list of requests to the daemon. Nothing listens on a port, and the extension never receives environments, secrets or logs.
 
@@ -48,11 +46,7 @@ pnpm build
 
 Open `chrome://extensions` (`edge://extensions` in Edge), turn on Developer mode, click "Load unpacked" and pick `apps/chromium/dist`. The extension id is always `pggffblellmckocpflaaeligadjpkahj`, because the manifest carries a fixed public key.
 
-Then register the native host with devlanes:
-
-```sh
-devlanes setup --browser
-```
+The extension needs a devlanes release with the browser host, which isn't out yet. Once it is, register the host with `devlanes setup --browser`.
 
 `pnpm zip` packs the build into `apps/chromium/artifacts/`.
 
@@ -61,7 +55,7 @@ devlanes setup --browser
 The repository is a pnpm workspace:
 
 - `packages/protocol` holds the types and parsers of the messages the devlanes native host sends.
-- `packages/extension` holds the background and the popup, which work in any browser.
+- `packages/extension` holds the background and the popup, with no code tied to one browser.
 - `apps/chromium` builds them with rsbuild into an extension for Chromium-based browsers.
 
 Before you push, run the checks CI runs:

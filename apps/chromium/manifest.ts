@@ -19,7 +19,7 @@ export function manifest(version: string): chrome.runtime.ManifestV3 {
     manifest_version: 3,
     name: 'devlanes',
     version,
-    description: 'Shows your devlanes lanes and their URLs.',
+    description: 'The devlanes browser extension.',
     minimum_chrome_version: '120',
     key: KEY,
     icons: ICONS,

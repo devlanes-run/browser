@@ -34,7 +34,9 @@ export function pluginManifest(manifest: chrome.runtime.ManifestV3): RsbuildPlug
           (file) => !compilation.getAsset(file) && !existsSync(join(publicDir, file))
         );
         if (missing.length > 0) {
-          throw new Error(`manifest.json names files the build didn't emit: ${missing.join(', ')}`);
+          throw new Error(
+            `manifest.json names files the build didn't emit: ${missing.join(', ')}. Add them to public/ or fix their paths in manifest.ts.`
+          );
         }
         compilation.emitAsset(
           'manifest.json',
