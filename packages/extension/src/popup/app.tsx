@@ -56,7 +56,7 @@ function StatusLine({ status, bridge }: { status: Status; bridge: Bridge }) {
     case 'outdated':
       return (
         <p class="line warn">
-          The devlanes daemon is out of date. Restart the daemon with{' '}
+          The devlanes daemon is too old for this extension. Restart the daemon with{' '}
           <Cmd>devlanes daemon restart</Cmd>.
         </p>
       );
