@@ -1,5 +1,13 @@
 import type { UseParams } from '@devlanes/protocol';
 import {
+  loginsKey,
+  parseRecords,
+  parseSettings,
+  projectOf,
+  SETTINGS_KEY,
+  type Settings
+} from '../logins';
+import {
   type BackgroundMessage,
   POPUP_PORT,
   type PopupMessage,
@@ -23,6 +31,30 @@ export interface Bridge {
   open(url: string): void;
   /** Puts `text` on the clipboard. */
   copy(text: string): Promise<void>;
+  /** Calls `listener` with the login settings and saved logins, now and on each change. Returns a function that stops it. */
+  watchLogins(listener: (state: LoginState) => void): () => void;
+  /** Turns one login setting on or off. */
+  setLoginSetting(name: keyof Settings, on: boolean): Promise<void>;
+  /** Deletes the saved logins of `project`. */
+  forgetLogins(project: string): Promise<void>;
+}
+
+/** The login settings and how many logins each project has saved. */
+export interface LoginState {
+  settings: Settings;
+  /** Projects with saved logins, by name. */
+  saved: { project: string; count: number }[];
+}
+
+/** The login state stored in `items`, the whole of `chrome.storage.local`. */
+export function loginState(items: Record<string, unknown>): LoginState {
+  const saved = Object.entries(items).flatMap(([key, value]) => {
+    const project = projectOf(key);
+    const count = project === undefined ? 0 : parseRecords(value).length;
+    return project !== undefined && count > 0 ? [{ project, count }] : [];
+  });
+  saved.sort((a, b) => a.project.localeCompare(b.project));
+  return { settings: parseSettings(items[SETTINGS_KEY]), saved };
 }
 
 /**
@@ -108,6 +140,38 @@ export function chromeBridge(): Bridge {
     },
     copy(text) {
       return navigator.clipboard.writeText(text);
+    },
+    watchLogins(listener) {
+      let stopped = false;
+      const read = () => {
+        chrome.storage.local.get(null).then(
+          (items) => {
+            if (!stopped) {
+              listener(loginState(items));
+            }
+          },
+          (error) => console.error(error)
+        );
+      };
+      const changed = (_: unknown, area: string) => {
+        if (area === 'local') {
+          read();
+        }
+      };
+      chrome.storage.onChanged.addListener(changed);
+      read();
+      return () => {
+        stopped = true;
+        chrome.storage.onChanged.removeListener(changed);
+      };
+    },
+    async setLoginSetting(name, on) {
+      const items = await chrome.storage.local.get(SETTINGS_KEY);
+      const settings: Settings = { ...parseSettings(items[SETTINGS_KEY]), [name]: on };
+      await chrome.storage.local.set({ [SETTINGS_KEY]: settings });
+    },
+    forgetLogins(project) {
+      return chrome.storage.local.remove(loginsKey(project));
     }
   };
 }

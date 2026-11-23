@@ -1,6 +1,8 @@
 import { HOST_NAME, type View } from '@devlanes/protocol';
 import { HostConnection, type NativePort } from './background/host';
+import { Logins } from './background/logins';
 import { badgeFor } from './lanes';
+import { parseSettings, SETTINGS_KEY, type Settings, type SettingsChanged } from './logins';
 import {
   type BackgroundMessage,
   POPUP_PORT,
@@ -96,6 +98,61 @@ async function restore(): Promise<void> {
 
 /** Settles once the saved snapshot is back in {@link host}, or failed to load. */
 const restored = restore().catch((error) => console.error(error));
+
+// Passwords sit in `storage.local`, which content scripts can read by default. Every
+// read goes through the background instead, which checks the frame's lane first.
+// Chrome 120 can only restrict `storage.session`, so older versions skip this, and
+// a throw here would stop the whole worker.
+chrome.storage.local
+  .setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' })
+  .catch((error) => console.error(error));
+
+const logins = new Logins({
+  extensionId: chrome.runtime.id,
+  view: async () => {
+    // A content script can wake a stopped worker, which has no view until the saved one is back.
+    await restored;
+    return host.snapshot.view;
+  },
+  store: {
+    get: async (key) => (await chrome.storage.local.get(key))[key],
+    set: (key, value) => chrome.storage.local.set({ [key]: value })
+  },
+  now: Date.now,
+  token: () => crypto.randomUUID()
+});
+
+/** Tells the content scripts of every lane tab about new settings. */
+async function sendSettings(settings: Settings): Promise<void> {
+  const tabs = await chrome.tabs.query({ url: 'https://*.localhost/*' });
+  const message: SettingsChanged = { type: 'login:settings', settings };
+  await Promise.all(
+    tabs.map((tab) =>
+      // A tab that loaded before the extension has no content script to answer.
+      tab.id === undefined ? undefined : chrome.tabs.sendMessage(tab.id, message).catch(() => {})
+    )
+  );
+}
+
+chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  const answer = logins.answer(message, sender);
+  if (!answer) {
+    return false;
+  }
+  answer.then(respond, (error) => {
+    console.error(error);
+    respond(null);
+  });
+  // Keeps `respond` valid until the answer is ready.
+  return true;
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  const change = changes[SETTINGS_KEY];
+  if (area === 'local' && change) {
+    sendSettings(parseSettings(change.newValue)).catch((error) => console.error(error));
+  }
+});
 
 /** Answers one request from a popup. */
 async function answer(port: chrome.runtime.Port, message: PopupMessage): Promise<void> {

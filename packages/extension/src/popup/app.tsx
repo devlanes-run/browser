@@ -2,24 +2,15 @@ import { PROTOCOL_VERSION, type Project } from '@devlanes/protocol';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { findRoute } from '../lanes';
+import { Mark } from '../mark';
 import { CONNECTING, type Snapshot, type Status } from '../state';
 import type { Bridge } from './bridge';
 import { Cross, LaneItem } from './lane';
+import { LoginSettings } from './settings';
 import { boxDown, type ShapeName } from './words';
 
 /** Where the protocol mismatch text sends people for a newer extension. */
 const REPOSITORY = 'https://github.com/devlanes-run/browser';
-
-/** The devlanes mark: three rounded bars staggered right, the top one in paint. */
-function Mark() {
-  return (
-    <svg class="mark" viewBox="8 16 48 32" aria-hidden="true" focusable="false">
-      <rect x="8" y="16" width="32" height="8" rx="4" fill="var(--paint)" />
-      <rect x="16" y="28" width="32" height="8" rx="4" />
-      <rect x="24" y="40" width="32" height="8" rx="4" />
-    </svg>
-  );
-}
 
 /** The short word and the shape of each status, for the header. */
 const STATUS: Record<Status['state'], { word: string; shape: ShapeName }> = {
@@ -107,13 +98,62 @@ function ordered(projects: Project[], first: Project | undefined): Project[] {
   return first ? [first, ...projects.filter((project) => project !== first)] : projects;
 }
 
-/** The popup: the connection, notices, then every project with its lanes. */
+/** The popup: the header, then the lanes or the login settings. */
 export function App({ bridge }: { bridge: Bridge }) {
   // The first paint never waits for the background: it shows "Connecting" until a snapshot comes.
   const [snapshot, setSnapshot] = useState<Snapshot>(CONNECTING);
-  const [page, setPage] = useState<URL | undefined>();
+  const [settings, setSettings] = useState(false);
 
   useEffect(() => bridge.watch(setSnapshot), [bridge]);
+
+  const head = STATUS[snapshot.status.state];
+
+  return (
+    <main>
+      <header class="top">
+        <Mark />
+        <span class="brand">devlanes</span>
+        {snapshot.devlanes && <span class="ver ter">{snapshot.devlanes}</span>}
+        <span class="end" role="status">
+          <span class={`st ${head.shape}`} aria-hidden="true" />
+          <span>{head.word}</span>
+        </span>
+        <button
+          type="button"
+          class="x gear"
+          aria-label="Login settings"
+          title="Login settings"
+          aria-pressed={settings}
+          onClick={() => setSettings(!settings)}
+        >
+          <Sliders />
+        </button>
+      </header>
+      {settings ? <LoginSettings bridge={bridge} /> : <Lanes snapshot={snapshot} bridge={bridge} />}
+    </main>
+  );
+}
+
+/** The settings icon: two sliders. */
+function Sliders() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path d="M2 5h12M2 11h12" />
+      <circle cx="10" cy="5" r="1.8" />
+      <circle cx="6" cy="11" r="1.8" />
+    </svg>
+  );
+}
+
+/** The props of {@link Lanes}. */
+interface LanesProps {
+  snapshot: Snapshot;
+  bridge: Bridge;
+}
+
+/** The connection, notices, then every project with its lanes. */
+function Lanes({ snapshot, bridge }: LanesProps) {
+  const [page, setPage] = useState<URL | undefined>();
   useEffect(() => {
     bridge.currentPage().then(
       (url) => setPage(url && URL.canParse(url) ? new URL(url) : undefined),
@@ -126,19 +166,9 @@ export function App({ bridge }: { bridge: Bridge }) {
   const stale = !live && status.state !== 'connecting' && (view?.projects.length ?? 0) > 0;
   const at = view && page ? findRoute(view, page.hostname) : undefined;
   const down = view?.boxes.filter((box) => box.state !== 'connected') ?? [];
-  const head = STATUS[status.state];
 
   return (
-    <main>
-      <header class="top">
-        <Mark />
-        <span class="brand">devlanes</span>
-        {snapshot.devlanes && <span class="ver ter">{snapshot.devlanes}</span>}
-        <span class="end" role="status">
-          <span class={`st ${head.shape}`} aria-hidden="true" />
-          <span>{head.word}</span>
-        </span>
-      </header>
+    <>
       <StatusLine status={status} bridge={bridge} />
       {notices.length > 0 && (
         <ul class="notices">
@@ -192,6 +222,6 @@ export function App({ bridge }: { bridge: Bridge }) {
             </ul>
           </section>
         ))}
-    </main>
+    </>
   );
 }

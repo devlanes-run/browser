@@ -28,10 +28,43 @@ function filesOf(manifest: chrome.runtime.ManifestV3): Set<string> {
   return files;
 }
 
+/** The part of an rspack compilation the content script check reads. */
+interface Entrypoints {
+  entrypoints: ReadonlyMap<
+    string,
+    { getFiles(): string[]; chunks: { getAllAsyncChunks(): unknown[] }[] }
+  >;
+}
+
+/**
+ * The content scripts of `manifest` that the build didn't emit as one
+ * self-contained file, each with the reason. Chrome loads content scripts as
+ * classic scripts, which can't import or load other chunks.
+ */
+function splitContentScripts(manifest: chrome.runtime.ManifestV3, build: Entrypoints): string[] {
+  const problems: string[] = [];
+  for (const file of (manifest.content_scripts ?? []).flatMap((script) => script.js ?? [])) {
+    const entry = [...build.entrypoints.values()].find((each) => each.getFiles().includes(file));
+    // A file no entry emits is reported as missing.
+    if (!entry) {
+      continue;
+    }
+    const others = entry.getFiles().filter((each) => each !== file && !each.endsWith('.map'));
+    if (others.length > 0) {
+      problems.push(`${file} also needs ${others.join(', ')}`);
+    }
+    if (entry.chunks.some((chunk) => chunk.getAllAsyncChunks().length > 0)) {
+      problems.push(`${file} loads chunks at run time`);
+    }
+  }
+  return problems;
+}
+
 /**
  * Writes `manifest` as `manifest.json` next to the build output. The build fails
- * when the manifest names a file the build didn't emit, because Chrome would only
- * report that when someone loads the extension.
+ * when the manifest names a file the build didn't emit, or a content script that
+ * isn't one self-contained file, because Chrome would only report that when
+ * someone loads the extension or opens a lane.
  */
 export function pluginManifest(manifest: chrome.runtime.ManifestV3): RsbuildPlugin {
   return {
@@ -48,6 +81,12 @@ export function pluginManifest(manifest: chrome.runtime.ManifestV3): RsbuildPlug
         if (missing.length > 0) {
           throw new Error(
             `manifest.json names files the build didn't emit: ${missing.join(', ')}. Add them to public/ or fix their paths in manifest.ts.`
+          );
+        }
+        const split = splitContentScripts(manifest, compilation);
+        if (split.length > 0) {
+          throw new Error(
+            `A content script isn't one self-contained file: ${split.join('. ')}. Remove its dynamic and CSS imports.`
           );
         }
         compilation.emitAsset(

@@ -1,0 +1,103 @@
+@import "../tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  /* The frame's corners are rounded by the content script, so the page fills it to the edge. */
+  background: var(--surface);
+  overflow: hidden;
+}
+
+body {
+  color: var(--ink);
+  font-family: var(--prose);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.hd {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 6px;
+  border-bottom: var(--rule);
+  color: var(--muted);
+  font-size: 12px;
+
+  .mark {
+    width: 15px;
+    height: 10px;
+    fill: var(--bars);
+  }
+
+  .brand {
+    color: var(--ink);
+    font-family: var(--mono);
+    font-weight: 700;
+  }
+
+  .project {
+    min-width: 0;
+    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.options {
+  padding: 4px;
+  overflow-y: auto;
+  outline: none;
+}
+
+.option {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+
+  &[aria-selected="true"] {
+    background: var(--here);
+    box-shadow: inset 3px 0 0 var(--paint);
+  }
+
+  .user {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lane {
+    flex: none;
+    margin-left: auto;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+}
+
+/* Keyboard focus inside the menu shows on the list, since the options aren't focusable. */
+.options:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus);
+  border-radius: 0 0 7px 7px;
+}

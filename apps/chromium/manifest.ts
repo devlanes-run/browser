@@ -27,6 +27,26 @@ export function manifest(version: string): chrome.runtime.ManifestV3 {
     background: { service_worker: 'background.js', type: 'module' },
     permissions: ['nativeMessaging', 'storage'],
     // These also expose the URLs of `*.localhost` tabs, so the extension needs no `tabs` permission.
-    host_permissions: ['https://*.localhost/*']
+    host_permissions: ['https://*.localhost/*'],
+    content_scripts: [
+      {
+        matches: ['https://*.localhost/*'],
+        js: ['content.js'],
+        // Lane pages often sign in inside frames, and `about:blank` or `blob:` frames
+        // a lane page opens take its origin, so the fill reaches them too.
+        all_frames: true,
+        match_origin_as_fallback: true,
+        run_at: 'document_idle'
+      }
+    ],
+    web_accessible_resources: [
+      {
+        // The login menu shows in a frame of this page on lane pages.
+        resources: ['menu.html'],
+        matches: ['https://*.localhost/*'],
+        // A new id each browser session, so pages can't tell from a fixed URL that the extension is installed.
+        use_dynamic_url: true
+      }
+    ]
   };
 }

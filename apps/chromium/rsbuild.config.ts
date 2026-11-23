@@ -12,6 +12,9 @@ export default defineConfig({
   source: {
     entry: {
       background: { import: '@devlanes/extension/background', html: false },
+      // Content scripts load as classic scripts, so this entry is one file with no imports.
+      content: { import: '@devlanes/extension/content', html: false },
+      menu: '@devlanes/extension/menu',
       popup: '@devlanes/extension/popup'
     }
   },

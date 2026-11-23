@@ -1,0 +1,49 @@
+/*
+ * The devlanes palette from crates/mcp-ui/ui/src/styles/_tokens.scss in devlanes:
+ * light is the website's page, dark its terminal window with the TUI's state tones.
+ * Keep the values equal to that file. The popup and the login menu share it.
+ */
+:root {
+  --surface: #e9e7e1;
+  --ink: #24231f;
+  --muted: #63615a;
+  --tertiary: #7a776f;
+  --line: #d1cfc7;
+  --info: #2f5f8f;
+  --warning: #8a6400;
+  --error: #b42318;
+  --success: #2a6e47;
+  --focus: #a77900;
+  --bars: #3d3b36;
+  --paint: #f5c542;
+  --on-paint: #24231f;
+  --well: #dedcd5;
+  /* The website's Overpass and JetBrains Mono aren't bundled, so the stacks name what renders. */
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --prose: system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --hover: color-mix(in srgb, var(--ink) 7%, transparent);
+  --rule: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  --here: color-mix(in srgb, var(--paint) 16%, transparent);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1a1917;
+    --ink: #e8e6df;
+    --muted: #a39e91;
+    --tertiary: #857f73;
+    --line: #5a554b;
+    --info: #6ca8e8;
+    --warning: #e8a13c;
+    --error: #e5584a;
+    --success: #4cbf7f;
+    --focus: #f5c542;
+    --bars: #c9c6bd;
+    /* The terminal's title bar, the dark well of the mcp-ui card. */
+    --well: #22211f;
+    --rule: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+    --here: color-mix(in srgb, var(--paint) 9%, transparent);
+  }
+}
