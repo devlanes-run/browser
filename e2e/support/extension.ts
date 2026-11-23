@@ -8,6 +8,7 @@ import {
   chromium,
   expect,
   type Page,
+  type TestInfo,
   type Worker
 } from '@playwright/test';
 import { EXTENSION_ID, FakeHost, type Scenario, TEST_FOLDER_PREFIX } from './host';
@@ -49,17 +50,26 @@ export interface Lab {
   stored<T>(key: string): Promise<T | undefined>;
 }
 
+/** A launched browser with the popups its test opened, for the screenshots of a failure. */
+interface Launched {
+  context: BrowserContext;
+  popups: Popup[];
+}
+
 /**
  * The `launch` fixture. Each test gets its own profile and host folder, so no
  * state crosses tests. The browser closes and the host registration goes back
  * to what it was, even when the test fails.
  */
 export const test = base.extend<{ launch: (options?: LaunchOptions) => Promise<Lab> }>({
-  launch: async ({ browserName: _ }, use) => {
+  // Playwright reads a fixture's dependencies from an object pattern in its first
+  // argument and refuses an empty one, so this names a built-in fixture it ignores.
+  launch: async ({ browserName: _ }, use, testInfo) => {
     if (!existsSync(join(DIST, 'manifest.json'))) {
       throw new Error(`${DIST} has no build. Run pnpm build, then run the tests again.`);
     }
     const cleanups: (() => Promise<void> | void)[] = [];
+    const launched: Launched[] = [];
     await use(async ({ scenario = {}, installed = true } = {}) => {
       const folder = mkdtempSync(join(tmpdir(), TEST_FOLDER_PREFIX));
       cleanups.push(() => {
@@ -89,8 +99,13 @@ export const test = base.extend<{ launch: (options?: LaunchOptions) => Promise<L
       const worker =
         context.serviceWorkers().find(ours) ??
         (await context.waitForEvent('serviceworker', { predicate: ours }));
-      return lab(context, worker, host);
+      const entry: Launched = { context, popups: [] };
+      launched.push(entry);
+      return lab(entry, worker, host);
     });
+    if (testInfo.status !== testInfo.expectedStatus) {
+      await screenshots(launched, testInfo);
+    }
     // The last one set up closes first: the browser before the registry and the folder.
     // Every step runs even when one fails, so the registry always goes back.
     const errors: unknown[] = [];
@@ -107,8 +122,28 @@ export const test = base.extend<{ launch: (options?: LaunchOptions) => Promise<L
   }
 });
 
+/**
+ * Saves a screenshot of every page and popup still open into the test's output
+ * folder, which CI keeps when a test fails. A page that can't be captured any
+ * more is skipped, since the screenshots only help explain the failure.
+ */
+async function screenshots(launched: Launched[], testInfo: TestInfo): Promise<void> {
+  for (const [index, { context, popups }] of launched.entries()) {
+    for (const [tab, page] of context.pages().entries()) {
+      await page
+        .screenshot({ path: testInfo.outputPath(`browser-${index}-tab-${tab}.png`) })
+        .catch(() => undefined);
+    }
+    for (const [number, popup] of popups.entries()) {
+      await popup
+        .screenshot(testInfo.outputPath(`browser-${index}-popup-${number}.png`))
+        .catch(() => undefined);
+    }
+  }
+}
+
 /** The {@link Lab} of a launched browser. */
-function lab(context: BrowserContext, worker: Worker, host: FakeHost): Lab {
+function lab({ context, popups }: Launched, worker: Worker, host: FakeHost): Lab {
   return {
     context,
     worker,
@@ -118,7 +153,11 @@ function lab(context: BrowserContext, worker: Worker, host: FakeHost): Lab {
       await page.goto(url);
       return page;
     },
-    popup: (front, opener = workerScope(worker)) => Popup.open(context, opener, front),
+    async popup(front, opener = workerScope(worker)) {
+      const popup = await Popup.open(context, opener, front);
+      popups.push(popup);
+      return popup;
+    },
     async badge(page) {
       return worker.evaluate(async (url) => {
         const tabs = await chrome.tabs.query({ url: 'https://*.localhost/*' });
