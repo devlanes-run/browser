@@ -171,7 +171,7 @@ export function App({ bridge }: { bridge: Bridge }) {
         <p class="line sec">
           {status.state === 'daemon_stopped'
             ? 'These lanes are from before devlanes stopped.'
-            : 'These lanes are from before the connection dropped.'}
+            : 'These lanes may be out of date.'}
         </p>
       )}
       {view &&

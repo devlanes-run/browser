@@ -265,6 +265,7 @@ export const CASES: Case[] = [
         message: 'Restart the daemon with devlanes daemon restart.'
       },
       devlanes: '0.15.0',
+      view: LOCAL_VIEW,
       notices: []
     }
   },
