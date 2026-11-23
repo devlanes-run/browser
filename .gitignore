@@ -8,3 +8,5 @@ coverage
 *.log
 .worktrees/
 packages/extension/preview/screenshots/
+e2e/test-results/
+e2e/playwright-report/

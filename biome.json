@@ -1,6 +1,11 @@
 {
   "$schema": "https://biomejs.dev/schemas/latest/schema.json",
   "extends": ["@arthurfiorette/biomejs-config"],
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
   "assist": {
     "actions": {
       "source": {
