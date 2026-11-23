@@ -214,7 +214,7 @@ function backUp(): Backup {
 function restore(backup: Backup): void {
   const current = rawDefault();
   // A missing value is the tests' too: the test without a host removes it.
-  const ours = current === null || current.includes(TEST_FOLDER_PREFIX);
+  const ours = current === null || isTestValue(current);
   if (!ours) {
     return;
   }
@@ -248,7 +248,16 @@ export function restoreLeftover(): void {
  */
 function readDefault(): string | null {
   const value = rawDefault();
-  return value && !value.includes(TEST_FOLDER_PREFIX) ? value : null;
+  return value && !isTestValue(value) ? value : null;
+}
+
+/**
+ * True when `value` points into a test folder. It checks the bare prefix, without
+ * `run-`, because folders made before that part was added start with it, and a
+ * value an older run left behind must get cleaned up too.
+ */
+function isTestValue(value: string): boolean {
+  return value.includes(TEST_FOLDER_PREFIX_BASE);
 }
 
 /** The default value of the Windows host key as it is, or `null` when it is missing. */
