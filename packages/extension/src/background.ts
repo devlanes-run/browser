@@ -43,7 +43,10 @@ const host = new HostConnection({
 /** Sends the snapshot to open popups, saves it for the next service worker and repaints badges. */
 function changed(snapshot: Snapshot): void {
   post({ type: 'snapshot', snapshot });
-  chrome.storage.session.set({ [SNAPSHOT_KEY]: snapshot }).catch((error) => console.error(error));
+  // Saving before the restore read the old snapshot would overwrite its lanes with none.
+  restored
+    .then(() => chrome.storage.session.set({ [SNAPSHOT_KEY]: host.snapshot }))
+    .catch((error) => console.error(error));
   // The host sends a view only when it differs, so identity is enough to skip repaints.
   if (snapshot.view !== paintedView) {
     paintedView = snapshot.view;
@@ -91,6 +94,9 @@ async function restore(): Promise<void> {
   }
 }
 
+/** Settles once the saved snapshot is back in {@link host}, or failed to load. */
+const restored = restore().catch((error) => console.error(error));
+
 /** Answers one request from a popup. */
 async function answer(port: chrome.runtime.Port, message: PopupMessage): Promise<void> {
   if (message.type === 'dismiss') {
@@ -117,10 +123,15 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener((message: PopupMessage) => {
     answer(port, message).catch((error) => console.error(error));
   });
-  // The popup gets what is known first, so nothing it shows waits for the native host.
-  port.postMessage({ type: 'snapshot', snapshot: host.snapshot } satisfies BackgroundMessage);
   // A popup opening after `devlanes setup` connects again, with no browser restart.
   host.ensure();
+  // On a cold start the snapshot has no view until the saved one is back. Posting it
+  // earlier would replace the lanes the popup already painted from storage.
+  restored.then(() => {
+    if (popups.has(port)) {
+      port.postMessage({ type: 'snapshot', snapshot: host.snapshot } satisfies BackgroundMessage);
+    }
+  });
 });
 
 chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
@@ -128,5 +139,3 @@ chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
     paint(tabId, tab.url).catch((error) => console.error(error));
   }
 });
-
-restore().catch((error) => console.error(error));

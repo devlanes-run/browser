@@ -34,14 +34,16 @@ export function chromeBridge(): Bridge {
   const listeners = new Set<(snapshot: Snapshot) => void>();
   const pending = new Map<number, (reply: UseReply) => void>();
   let last: Snapshot | undefined;
-  let live = false;
+  let live: Snapshot | undefined;
+  // The saved lanes, kept until a live snapshot carries a view of its own.
+  let savedView: Snapshot['view'];
   let nextId = 1;
 
-  /** Keeps `snapshot` as the latest and hands it to every listener. */
+  /** Hands every listener the live snapshot, with the saved lanes while it has none. */
   const publish = (snapshot: Snapshot) => {
-    last = snapshot;
+    last = snapshot.view || !savedView ? snapshot : { ...snapshot, view: savedView };
     for (const listener of listeners) {
-      listener(snapshot);
+      listener(last);
     }
   };
 
@@ -50,17 +52,24 @@ export function chromeBridge(): Bridge {
   chrome.storage.session.get(SNAPSHOT_KEY).then(
     (items) => {
       const saved = items[SNAPSHOT_KEY] as Snapshot | undefined;
-      if (saved && !live) {
-        publish(saved);
+      if (!saved || live?.view) {
+        return;
       }
+      savedView = saved.view;
+      // The saved status may say "running" from an old port, which would enable the
+      // box switch, so it reads as connecting until the background answers.
+      publish(live ?? { ...saved, status: { state: 'connecting' } });
     },
     (error) => console.error(error)
   );
 
   port.onMessage.addListener((message: BackgroundMessage) => {
     if (message.type === 'snapshot') {
-      live = true;
-      publish(message.snapshot);
+      live = message.snapshot;
+      if (live.view) {
+        savedView = undefined;
+      }
+      publish(live);
     } else {
       pending.get(message.id)?.(message.reply);
       pending.delete(message.id);
