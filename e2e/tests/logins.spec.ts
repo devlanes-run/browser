@@ -390,8 +390,9 @@ test('the fill works in a lane page framed by another lane page', async ({ launc
   );
   const child = page.frameLocator('#child');
   // A Playwright click into the frame sometimes focuses only the frame element and
-  // not the field inside, about one full run in five on Windows, so the test focuses
-  // the field itself. The keys that pick the login are still a person's.
+  // not the field inside. It happens without the extension too: on Windows, 2 of 40
+  // fresh browsers without it and 3 of 40 with it left the field unfocused. So the
+  // test focuses the field itself. The keys that pick the login are still a person's.
   await child.locator('#user').focus();
   await menuFor(page, SEED.username);
   await page.keyboard.press('ArrowDown');
