@@ -73,19 +73,17 @@ export type Holds = 'processes' | 'containers';
 
 const HOLDS: readonly Holds[] = ['processes', 'containers'];
 
-/** Error codes that carry no `data`. */
+/**
+ * Error codes protocol 1 defines without `data`. A plain error may also carry a
+ * code a newer host added.
+ */
 export type PlainErrorCode =
+  | 'hello_required'
+  | 'invalid_request'
   | 'unknown_method'
   | 'box_unknown'
   | 'lane_not_on_box'
   | 'local_lane_unknown';
-
-const PLAIN_ERROR_CODES: readonly PlainErrorCode[] = [
-  'unknown_method',
-  'box_unknown',
-  'lane_not_on_box',
-  'local_lane_unknown'
-];
 
 /** `local_lane_running`'s data. `commands` free the ports, one shell command each. */
 export interface LocalLaneRunning {
@@ -94,12 +92,23 @@ export interface LocalLaneRunning {
   commands: string[];
 }
 
-/** An error reply's `error`. `message` is ready to show as it is. */
+/** An error the popup only shows by its `message`. */
+export interface PlainError {
+  code: PlainErrorCode | (string & {});
+  message: string;
+}
+
+/**
+ * An error reply's `error`. `message` is ready to show as it is. Codes whose
+ * `data` the popup acts on are parsed strictly, and every other code is a
+ * {@link PlainError}.
+ */
 export type HostError =
   | { code: 'protocol_mismatch'; message: string; data: { supported: number[] } }
   | { code: 'local_lane_running'; message: string; data: LocalLaneRunning }
   | { code: 'containers_hold_ports'; message: string; data: { commands: string[] } }
-  | { code: PlainErrorCode; message: string };
+  | { code: 'daemon_failed'; message: string; data: { code: string } }
+  | PlainError;
 
 /** A daemon state change, with a sentence to show when the daemon isn't usable. */
 export interface DaemonStatus {
@@ -118,6 +127,14 @@ export type HostEvent =
   | { event: 'daemon'; data: DaemonStatus }
   | { event: 'notice'; data: Notice };
 
+/**
+ * An event or notice a newer host added. The extension drops it, since devlanes
+ * and the extension ship separately.
+ */
+export interface Ignored {
+  ignored: true;
+}
+
 /** A successful reply. Read `result` with the parser for the request's method. */
 export interface Reply {
   id: number;
@@ -131,12 +148,13 @@ export interface ErrorReply {
 }
 
 /** Anything the host sends. */
-export type HostMessage = Reply | ErrorReply | HostEvent;
+export type HostMessage = Reply | ErrorReply | HostEvent | Ignored;
 
 /**
  * Reads one message from the host. Replies keep `result` unchecked, since only
- * the caller knows which method the `id` belongs to. Throws {@link ProtocolError}
- * on anything protocol 1 doesn't define.
+ * the caller knows which method the `id` belongs to. Unknown fields are dropped,
+ * and an unknown event or notice code reads as {@link Ignored}. Throws
+ * {@link ProtocolError} when a field protocol 1 defines has the wrong shape.
  */
 export function parseHostMessage(value: unknown): HostMessage {
   const message = object(value, '$');
@@ -184,32 +202,39 @@ export function parseUseResult(value: unknown): UseResult {
 }
 
 /** Reads an event by its name. */
-function parseEvent(name: unknown, data: unknown): HostEvent {
-  const event = oneOf(name, '$.event', ['view', 'daemon', 'notice']);
+function parseEvent(name: unknown, data: unknown): HostEvent | Ignored {
+  const event = string(name, '$.event');
   switch (event) {
     case 'view':
       return { event, data: parseView(data, '$.data') };
     case 'daemon':
       return { event, data: parseDaemonStatus(data) };
-    case 'notice':
-      return { event, data: parseNotice(data) };
+    case 'notice': {
+      const notice = parseNotice(data);
+      return notice ? { event, data: notice } : { ignored: true };
+    }
+    default:
+      return { ignored: true };
   }
 }
 
-/** Reads a `daemon` event's data. */
+/** Reads a `daemon` event's data. A missing or `null` message reads as absent. */
 function parseDaemonStatus(value: unknown): DaemonStatus {
   const data = object(value, '$.data');
   const status: DaemonStatus = { state: oneOf(data.state, '$.data.state', DAEMON_STATES) };
-  if (has(data, 'message')) {
+  if (data.message != null) {
     status.message = string(data.message, '$.data.message');
   }
   return status;
 }
 
-/** Reads a `notice` event's data. */
-function parseNotice(value: unknown): Notice {
+/** Reads a `notice` event's data, or returns `undefined` for a code it doesn't know. */
+function parseNotice(value: unknown): Notice | undefined {
   const data = object(value, '$.data');
-  const code = oneOf(data.code, '$.data.code', ['lane_switched', 'choice_cleared']);
+  const code = string(data.code, '$.data.code');
+  if (code !== 'lane_switched' && code !== 'choice_cleared') {
+    return undefined;
+  }
   const lane = string(data.lane, '$.data.lane');
   const message = string(data.message, '$.data.message');
   if (code === 'lane_switched') {
@@ -230,15 +255,13 @@ function parseNotice(value: unknown): Notice {
   };
 }
 
-/** Reads an error reply's `error`, with the `data` its code carries. */
+/**
+ * Reads an error reply's `error`. Codes whose `data` the popup acts on must carry
+ * it, and any other code reads as a plain error.
+ */
 function parseError(value: unknown, path: string): HostError {
   const error = object(value, path);
-  const code = oneOf(error.code, `${path}.code`, [
-    'protocol_mismatch',
-    'local_lane_running',
-    'containers_hold_ports',
-    ...PLAIN_ERROR_CODES
-  ]);
+  const code = string(error.code, `${path}.code`);
   const message = string(error.message, `${path}.message`);
   switch (code) {
     case 'protocol_mismatch': {
@@ -268,6 +291,10 @@ function parseError(value: unknown, path: string): HostError {
         message,
         data: { commands: array(data.commands, `${path}.data.commands`, string) }
       };
+    }
+    case 'daemon_failed': {
+      const data = object(error.data, `${path}.data`);
+      return { code, message, data: { code: string(data.code, `${path}.data.code`) } };
     }
     default:
       return { code, message };

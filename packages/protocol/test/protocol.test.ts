@@ -9,7 +9,7 @@ import {
   parseWatchResult
 } from '../src/index';
 
-// The host messages from the plan's "Messages" section, as protocol 1 defines them.
+// One of each host message protocol 1 defines.
 const MESSAGES = [
   { id: 1, result: { protocol: 1, devlanes: '0.15.0', daemon: 'running' } },
   { id: 2, result: {} },
@@ -71,10 +71,13 @@ const MESSAGES = [
     }
   },
   { id: 6, error: { code: 'protocol_mismatch', message: '...', data: { supported: [1] } } },
-  { id: 7, error: { code: 'unknown_method', message: '...' } }
+  { id: 7, error: { code: 'unknown_method', message: '...' } },
+  { id: 8, error: { code: 'hello_required', message: '...' } },
+  { id: 9, error: { code: 'invalid_request', message: '...' } },
+  { id: 10, error: { code: 'daemon_failed', message: '...', data: { code: 'lane_unknown' } } }
 ];
 
-// The view from the plan's "View" section.
+// A view with a local source, a serving box and a skipped box.
 const VIEW = {
   boxes: [{ name: 'fork-a', state: 'connected' }],
   projects: [
@@ -112,7 +115,7 @@ const VIEW = {
   ]
 };
 
-/** A copy of the plan's view with its first lane changed by `edit`. */
+/** A copy of `view` with its first lane changed by `edit`. */
 function viewWithLane(edit: (lane: Record<string, unknown>) => void): unknown {
   const view = structuredClone(VIEW);
   edit(view.projects[0]!.lanes[0] as unknown as Record<string, unknown>);
@@ -134,22 +137,50 @@ describe('parseHostMessage', () => {
     }
   });
 
+  it('ignores events and notice codes a newer host added', () => {
+    const notice = { code: 'lane_renamed', lane: 'acme@0', message: '...' };
+    assert.deepEqual(parseHostMessage({ event: 'lane', data: {} }), { ignored: true });
+    assert.deepEqual(parseHostMessage({ event: 'notice', data: notice }), { ignored: true });
+  });
+
+  it('keeps an unknown error code as a plain error', () => {
+    const message = { id: 1, error: { code: 'teapot', message: 'No coffee.', data: { cups: 0 } } };
+    assert.deepEqual(parseHostMessage(message), {
+      id: 1,
+      error: { code: 'teapot', message: 'No coffee.' }
+    });
+  });
+
+  it('reads a missing or null daemon message as absent', () => {
+    for (const data of [{ state: 'running' }, { state: 'running', message: null }]) {
+      assert.deepEqual(parseHostMessage({ event: 'daemon', data }), {
+        event: 'daemon',
+        data: { state: 'running' }
+      });
+    }
+  });
+
+  it('drops unknown fields', () => {
+    const data = { code: 'lane_switched', lane: 'acme@0', from: null, to: 'fork-b', message: '' };
+    const message = { event: 'notice', data: { ...data, at_ms: 1 }, seq: 4 };
+    assert.deepEqual(parseHostMessage(message), { event: 'notice', data });
+  });
+
   it('refuses messages outside protocol 1', () => {
     const cases: [unknown, string][] = [
       [[], '$'],
       [{ id: 1 }, '$'],
       [{ id: -1, result: {} }, '$.id'],
-      [{ event: 'lane', data: {} }, '$.event'],
       [{ event: 'daemon', data: { state: 'sleeping' } }, '$.data.state'],
       [
         { event: 'notice', data: { code: 'lane_switched', lane: 'acme@0', message: '' } },
         '$.data.from'
       ],
-      [{ id: 1, error: { code: 'teapot', message: '' } }, '$.error.code'],
       [
         { id: 1, error: { code: 'local_lane_running', message: '', data: { holds: 'processes' } } },
         '$.error.data.local_lane'
-      ]
+      ],
+      [{ id: 1, error: { code: 'daemon_failed', message: '', data: {} } }, '$.error.data.code']
     ];
     for (const [value, path] of cases) {
       assertRefused(parseHostMessage, value, path);
@@ -175,8 +206,34 @@ describe('result parsers', () => {
 });
 
 describe('parseView', () => {
-  it('reads the plan view as it was sent', () => {
+  it('reads a view as it was sent', () => {
     assert.deepEqual(parseView(VIEW), VIEW);
+  });
+
+  it('keeps source states and skip causes a newer daemon added', () => {
+    const view = viewWithLane((lane) => {
+      const sources = lane.sources as { state: string; skipped?: { cause: string } }[];
+      sources[1]!.state = 'paused';
+      sources[2]!.skipped!.cause = 'box_busy';
+    });
+    assert.deepEqual(parseView(view), view);
+  });
+
+  it('reads a missing or null domain as null', () => {
+    for (const edit of [
+      (lane: Record<string, unknown>) => delete lane.domain,
+      (lane: Record<string, unknown>) => (lane.domain = null)
+    ]) {
+      assert.equal(parseView(viewWithLane(edit)).projects[0]?.lanes[0]?.domain, null);
+    }
+  });
+
+  it('drops unknown fields', () => {
+    const view = viewWithLane((lane) => {
+      lane.path = '/home/acme';
+      (lane.sources as Record<string, unknown>[])[0]!.units = [];
+    });
+    assert.deepEqual(parseView({ ...(view as object), version: 2 }), VIEW);
   });
 
   it('tells a lane served by this machine from one nothing serves', () => {
@@ -197,15 +254,15 @@ describe('parseView', () => {
       ],
       [
         viewWithLane((lane) => {
-          (lane.sources as { state: string }[])[1]!.state = 'ready';
+          (lane.sources as { state: unknown }[])[1]!.state = 1;
         }),
         `${lane}.sources[1].state`
       ],
       [
         viewWithLane((lane) => {
-          (lane.sources as { skipped: { cause: string } }[])[2]!.skipped.cause = 'busy';
+          (lane.sources as { skipped: { can_use: unknown } }[])[2]!.skipped.can_use = 'yes';
         }),
-        `${lane}.sources[2].skipped.cause`
+        `${lane}.sources[2].skipped.can_use`
       ],
       [viewWithLane((lane) => delete lane.routes), `${lane}.routes`]
     ];

@@ -1,16 +1,9 @@
-import {
-  array,
-  boolean,
-  count,
-  has,
-  nullableString,
-  object,
-  oneOf,
-  ProtocolError,
-  string
-} from './read';
+import { array, boolean, count, has, nullableString, object, ProtocolError, string } from './read';
 
-/** A lane source's state. Box sources only use `idle`, `starting`, `running` and `failed`. */
+/**
+ * A lane source's state. Box sources only use `idle`, `starting`, `running` and
+ * `failed`. A newer daemon may send other states, which the popup shows as they are.
+ */
 export type SourceState =
   | 'idle'
   | 'starting'
@@ -18,27 +11,16 @@ export type SourceState =
   | 'failed'
   | 'stopping'
   | 'unassigned'
-  | 'no-config';
+  | 'no-config'
+  | (string & {});
 
-const SOURCE_STATES: readonly SourceState[] = [
-  'idle',
-  'starting',
-  'running',
-  'failed',
-  'stopping',
-  'unassigned',
-  'no-config'
-];
-
-/** Why the daemon doesn't mirror a box's lane. */
-export type SkipCause = 'local_running' | 'local_stopped' | 'box_chosen' | 'box_earlier';
-
-const SKIP_CAUSES: readonly SkipCause[] = [
-  'local_running',
-  'local_stopped',
-  'box_chosen',
-  'box_earlier'
-];
+/** Why the daemon doesn't mirror a box's lane. A newer daemon may send other causes. */
+export type SkipCause =
+  | 'local_running'
+  | 'local_stopped'
+  | 'box_chosen'
+  | 'box_earlier'
+  | (string & {});
 
 /**
  * A remote box this machine knows. `state` is the daemon's link state, such as
@@ -79,7 +61,7 @@ export interface Lane {
   ref: string;
   index: number;
   name: string;
-  /** `null` for a lane that routes no hostname. */
+  /** `null` for a lane that routes no hostname. The host may also leave it out. */
   domain: string | null;
   /** `null` for this machine, a box name for a box, and absent when nothing serves the lane. */
   served_by?: string | null;
@@ -100,9 +82,9 @@ export interface View {
 }
 
 /**
- * Reads a `view` event's `data`. Unknown fields are dropped. Box and route states
- * stay open strings because the popup only displays them, so a new daemon state
- * doesn't break an older extension.
+ * Reads a `view` event's `data`. Unknown fields are dropped. States and skip
+ * causes stay open strings, so a new daemon value doesn't reject the whole view
+ * in an older extension.
  */
 export function parseView(value: unknown, path = '$'): View {
   const view = object(value, path);
@@ -141,7 +123,7 @@ function parseLane(value: unknown, path: string): Lane {
     ref: string(lane.ref, `${path}.ref`),
     index: count(lane.index, `${path}.index`),
     name: string(lane.name, `${path}.name`),
-    domain: nullableString(lane.domain, `${path}.domain`),
+    domain: nullableString(lane.domain ?? null, `${path}.domain`),
     sources,
     routes: array(lane.routes, `${path}.routes`, parseRoute)
   };
@@ -156,14 +138,14 @@ function parseSource(value: unknown, path: string): Source {
   const source = object(value, path);
   const parsed: Source = {
     box: nullableString(source.box, `${path}.box`),
-    state: oneOf(source.state, `${path}.state`, SOURCE_STATES),
+    state: string(source.state, `${path}.state`),
     branch: nullableString(source.branch, `${path}.branch`),
     serving: boolean(source.serving, `${path}.serving`)
   };
   if (has(source, 'skipped')) {
     const skipped = object(source.skipped, `${path}.skipped`);
     parsed.skipped = {
-      cause: oneOf(skipped.cause, `${path}.skipped.cause`, SKIP_CAUSES),
+      cause: string(skipped.cause, `${path}.skipped.cause`),
       can_use: boolean(skipped.can_use, `${path}.skipped.can_use`)
     };
   }
