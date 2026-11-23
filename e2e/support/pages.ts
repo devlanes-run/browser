@@ -44,8 +44,13 @@ const TWO_FORMS = `<!doctype html><meta charset="utf-8"><title>Two forms</title>
 <input id="b-user" autocomplete="section-admin username"><input id="b-pass" type="password" autocomplete="section-admin current-password">
 <button id="b-go">Sign in as admin</button></form>${RECORDER}`;
 
+/** A lane page that frames the sign-in page of another lane. */
+const FRAMED = `<!doctype html><meta charset="utf-8"><title>Framed</title>${STYLE}
+<iframe id="child" src="https://app.acme1.localhost/login" style="width:480px;height:360px"></iframe>`;
+
 /** The pages by path. Any other path gets {@link LOGIN}. */
 export const PAGES: Record<string, string> = {
+  '/framed': FRAMED,
   '/signed-in': '<!doctype html><title>Signed in</title><h1>Signed in</h1>',
   '/shadow': SHADOW,
   '/formless': FORMLESS,
