@@ -116,10 +116,19 @@ export interface DaemonStatus {
   message?: string;
 }
 
-/** A `remote.warning` the popup shows. `from` and `to` are `null` for this machine. */
+/**
+ * A `remote.warning` the popup shows. `from` and `to` are `null` for this machine.
+ * `holds` may be a value a newer daemon added, since the popup only shows it.
+ */
 export type Notice =
   | { code: 'lane_switched'; lane: string; from: string | null; to: string | null; message: string }
-  | { code: 'choice_cleared'; lane: string; local_lane: string; holds: Holds; message: string };
+  | {
+      code: 'choice_cleared';
+      lane: string;
+      local_lane: string;
+      holds: Holds | (string & {});
+      message: string;
+    };
 
 /** An event the host sends after `watch`. */
 export type HostEvent =
@@ -250,7 +259,7 @@ function parseNotice(value: unknown): Notice | undefined {
     code,
     lane,
     local_lane: string(data.local_lane, '$.data.local_lane'),
-    holds: oneOf(data.holds, '$.data.holds', HOLDS),
+    holds: string(data.holds, '$.data.holds'),
     message
   };
 }

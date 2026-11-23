@@ -115,7 +115,7 @@ const VIEW = {
   ]
 };
 
-/** A copy of `view` with its first lane changed by `edit`. */
+/** A copy of `VIEW` with its first lane changed by `edit`. */
 function viewWithLane(edit: (lane: Record<string, unknown>) => void): unknown {
   const view = structuredClone(VIEW);
   edit(view.projects[0]!.lanes[0] as unknown as Record<string, unknown>);
@@ -141,6 +141,17 @@ describe('parseHostMessage', () => {
     const notice = { code: 'lane_renamed', lane: 'acme@0', message: '...' };
     assert.deepEqual(parseHostMessage({ event: 'lane', data: {} }), { ignored: true });
     assert.deepEqual(parseHostMessage({ event: 'notice', data: notice }), { ignored: true });
+  });
+
+  it('keeps a choice_cleared holds value a newer daemon added', () => {
+    const data = {
+      code: 'choice_cleared',
+      lane: 'acme@0',
+      local_lane: 'acme@0',
+      holds: 'volumes',
+      message: '...'
+    };
+    assert.deepEqual(parseHostMessage({ event: 'notice', data }), { event: 'notice', data });
   });
 
   it('keeps an unknown error code as a plain error', () => {
