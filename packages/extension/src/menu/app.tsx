@@ -62,8 +62,18 @@ export function Menu({ claimed, channel, selected: initial = -1 }: MenuProps) {
     channel.post({ type: 'ready', count: logins.length, height });
   }, [channel, logins.length]);
 
+  // Scrolls only the list. `scrollIntoView` would also scroll the page around the menu.
   useEffect(() => {
-    list.current?.querySelector(`[data-index="${selected}"]`)?.scrollIntoView({ block: 'nearest' });
+    const option = list.current?.querySelector<HTMLElement>(`[data-index="${selected}"]`);
+    const box = option?.parentElement;
+    if (!option || !box) {
+      return;
+    }
+    if (option.offsetTop < box.scrollTop) {
+      box.scrollTop = option.offsetTop;
+    } else if (option.offsetTop + option.offsetHeight > box.scrollTop + box.clientHeight) {
+      box.scrollTop = option.offsetTop + option.offsetHeight - box.clientHeight;
+    }
   }, [selected]);
 
   /** The menu's own keys, for when it has the focus. */
