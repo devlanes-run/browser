@@ -1,6 +1,7 @@
 import { HOST_NAME, type View } from '@devlanes/protocol';
 import { HostConnection, type NativePort } from './background/host';
 import { Logins } from './background/logins';
+import { isPopupSender } from './background/popup-port';
 import { badgeFor } from './lanes';
 import { parseSettings, SETTINGS_KEY, type Settings, type SettingsChanged } from './logins';
 import {
@@ -176,6 +177,11 @@ chrome.runtime.onInstalled.addListener(() => host.ensure());
 
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== POPUP_PORT) {
+    return;
+  }
+  if (!isPopupSender(port.sender, chrome.runtime.id)) {
+    // Closing the port at once tells the sender it gets nothing, instead of leaving it waiting.
+    port.disconnect();
     return;
   }
   popups.add(port);
