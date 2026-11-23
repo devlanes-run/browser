@@ -23,6 +23,8 @@ async function paint(popup: Popup): Promise<number> {
   const ms = await popup.firstContentfulPaint();
   const description = `${Math.round(ms)} ms`;
   test.info().annotations.push({ type: 'first contentful paint', description });
+  // The list reporter prints this, so a CI log shows how close a runner comes to the bound.
+  console.log(`first contentful paint: ${description}`);
   return ms;
 }
 
