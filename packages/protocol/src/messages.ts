@@ -14,7 +14,7 @@ import { parseView, type View } from './view';
 /** The protocol version this extension speaks, sent in `hello`. */
 export const PROTOCOL_VERSION = 1;
 
-/** The native messaging host name `devlanes setup --browser` registers. */
+/** The native messaging host name `devlanes setup` registers. */
 export const HOST_NAME = 'run.devlanes.browser';
 
 /** `hello` params. */

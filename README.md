@@ -46,7 +46,7 @@ pnpm build
 
 Open `chrome://extensions` (`edge://extensions` in Edge), turn on Developer mode, click "Load unpacked" and pick `apps/chromium/dist`. The extension id is always `pggffblellmckocpflaaeligadjpkahj`, because the manifest carries a fixed public key.
 
-The extension needs a devlanes release with the browser host, which isn't out yet. Once it is, register the host with `devlanes setup --browser`.
+The extension needs a devlanes release with the browser host, which isn't out yet. Once it is, register the host with `devlanes setup`.
 
 `pnpm zip` packs the build into `apps/chromium/artifacts/`.
 
