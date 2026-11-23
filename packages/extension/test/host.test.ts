@@ -140,6 +140,33 @@ describe('HostConnection', () => {
     assert.equal(retries.at(-1)?.ms, 1000);
   });
 
+  it('drops a malformed event but gives up on a malformed or failed reply to its own requests', () => {
+    const { host, ports, retries, state } = setup();
+    host.ensure();
+    const first = ports[0];
+    assert.ok(first);
+    // An error that should carry data but doesn't fails to parse as a whole message.
+    first.receive({ id: first.idOf('hello'), error: { code: 'local_lane_running', message: '' } });
+    assert.equal(state(), 'host_failed');
+    assert.equal(first.closed, true);
+    assert.equal(retries.length, 1);
+
+    host.ensure();
+    const second = ports[1];
+    assert.ok(second);
+    hello(second);
+    second.receive({ event: 'view', data: { boxes: 'none' } });
+    assert.equal(state(), 'running');
+    assert.equal(second.closed, false);
+    second.receive({
+      id: second.idOf('watch'),
+      error: { code: 'daemon_failed', message: 'The daemon broke.', data: { code: 'boom' } }
+    });
+    assert.equal(state(), 'host_failed');
+    assert.equal(second.closed, true);
+    assert.equal(retries.length, 2);
+  });
+
   it('answers a use that waits when the port closes', async () => {
     const { host, ports } = setup();
     host.ensure();

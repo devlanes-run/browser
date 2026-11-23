@@ -35,6 +35,12 @@ export interface HostDeps {
 /** Seconds between reconnects, growing with each failure and staying at the last one. */
 const BACKOFF = [1, 2, 5, 10, 30];
 
+/**
+ * Chrome's reason when no manifest registers the host. Chrome gives native
+ * messaging errors as English messages only, with no codes.
+ */
+export const HOST_NOT_FOUND = 'Specified native messaging host not found.';
+
 /** How many `lane_switched` notices the popup keeps. */
 const NOTICES = 5;
 
@@ -102,7 +108,8 @@ export class HostConnection {
     this.#port = port;
     port.onMessage((message) => this.#receive(port, message));
     port.onDisconnect((error) => this.#lost(port, error));
-    this.#setStatus({ state: 'connecting' });
+    // The status stays as it was until the host answers, so a popup that opens on a
+    // missing host shows that at once instead of flashing "connecting" first.
     const id = this.#nextId++;
     this.#pending.set(id, { method: 'hello' });
     port.postMessage({
@@ -139,8 +146,7 @@ export class HostConnection {
     try {
       message = parseHostMessage(raw);
     } catch (error) {
-      // One malformed message shouldn't cost the popup the whole connection.
-      console.error('The devlanes host sent a message protocol 1 does not define.', error);
+      this.#malformed(port, raw, error);
       return;
     }
     if ('ignored' in message) {
@@ -164,8 +170,38 @@ export class HostConnection {
     this.#pending.delete(message.id);
     if (pending.method === 'hello') {
       this.#hello(port, message);
+    } else if (pending.method === 'watch') {
+      if ('error' in message) {
+        this.#fail(port, message.error.message);
+      }
     } else if ('resolve' in pending) {
       pending.resolve(useReply(message));
+    }
+  }
+
+  /**
+   * Handles a message that doesn't parse. A broken event is dropped, so one bad
+   * view doesn't cost the connection. A broken reply still ends its request,
+   * since its caller would wait forever otherwise.
+   */
+  #malformed(port: NativePort, raw: unknown, error: unknown): void {
+    console.error('The devlanes host sent a message protocol 1 does not define.', error);
+    const id =
+      typeof raw === 'object' && raw !== null && 'id' in raw && typeof raw.id === 'number'
+        ? raw.id
+        : undefined;
+    const pending = id === undefined ? undefined : this.#pending.get(id);
+    if (id === undefined || !pending) {
+      return;
+    }
+    this.#pending.delete(id);
+    if ('resolve' in pending) {
+      pending.resolve({
+        ok: false,
+        error: { code: 'unknown', host_code: 'invalid_reply', message: String(error) }
+      });
+    } else {
+      this.#fail(port, String(error));
     }
   }
 
@@ -173,12 +209,12 @@ export class HostConnection {
   #hello(port: NativePort, message: Reply | ErrorReply): void {
     if ('error' in message) {
       const { error } = message;
-      this.#close(port);
-      this.#setStatus(
-        error.code === 'protocol_mismatch'
-          ? { state: 'protocol_mismatch', supported: error.data.supported }
-          : { state: 'host_failed', detail: error.message }
-      );
+      if (error.code === 'protocol_mismatch') {
+        this.#close(port);
+        this.#setStatus({ state: 'protocol_mismatch', supported: error.data.supported });
+      } else {
+        this.#fail(port, error.message);
+      }
       return;
     }
     let daemon: 'running' | 'stopped' | 'outdated';
@@ -187,8 +223,7 @@ export class HostConnection {
       daemon = hello.daemon;
       this.#update({ devlanes: hello.devlanes });
     } catch (error) {
-      this.#close(port);
-      this.#setStatus({ state: 'host_failed', detail: String(error) });
+      this.#fail(port, String(error));
       return;
     }
     this.#failures = 0;
@@ -205,12 +240,23 @@ export class HostConnection {
     }
     this.#port = undefined;
     this.#failPending();
-    // Chrome gives native messaging errors as English messages only, with no codes.
-    if (error?.includes('not found')) {
+    if (error === HOST_NOT_FOUND) {
       this.#setStatus({ state: 'not_installed' });
       return;
     }
-    this.#setStatus({ state: 'host_failed', detail: error ?? 'The host closed the connection.' });
+    this.#retryLater(error ?? 'The host closed the connection.');
+  }
+
+  /** Closes `port` after the host answered something unusable, then retries later. */
+  #fail(port: NativePort, detail: string): void {
+    this.#close(port);
+    this.#retryLater(detail);
+  }
+
+  /** Sets `host_failed` and schedules the next connect, waiting longer after each failure. */
+  #retryLater(detail: string): void {
+    console.warn('The connection to the devlanes host failed.', detail);
+    this.#setStatus({ state: 'host_failed', detail });
     const delay = BACKOFF[Math.min(this.#failures, BACKOFF.length - 1)] ?? 30;
     this.#failures++;
     this.#cancelRetry = this.#deps.schedule(() => {
