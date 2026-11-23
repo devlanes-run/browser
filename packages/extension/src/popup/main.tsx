@@ -1,8 +1,6 @@
 import { render } from 'preact';
+import { App } from './app';
+import { chromeBridge } from './bridge';
+import './style.css';
 
-/** The popup's content until it lists lanes. */
-function Popup() {
-  return <main style={{ fontFamily: 'system-ui', padding: '12px 16px' }}>devlanes</main>;
-}
-
-render(<Popup />, document.getElementById('root')!);
+render(<App bridge={chromeBridge()} />, document.getElementById('root')!);
