@@ -62,11 +62,14 @@ describe('parseAutocomplete', () => {
 });
 
 describe('readable and fillable', () => {
-  it('reads hidden usernames but writes only visible text inputs that accept input', () => {
+  it('reads hidden usernames but no hidden password, and writes only text inputs that accept input', () => {
     const cases: [FieldLike, boolean, boolean][] = [
       [input('text', 'username'), true, true],
       [input('password', 'current-password'), true, true],
       [input('hidden', 'username'), true, false],
+      [input('hidden', 'email'), true, false],
+      [input('hidden', 'current-password'), false, false],
+      [input('hidden', 'section-a new-password'), false, false],
       [input('text', 'username', { disabled: true }), true, false],
       [input('text', 'username', { readOnly: true }), true, false],
       [input('checkbox', 'username'), false, false],

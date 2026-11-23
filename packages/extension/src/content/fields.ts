@@ -49,14 +49,16 @@ export interface FieldLike {
 
 /**
  * The login token of `input` when the extension may read it. A hidden input
- * counts, because sign-in pages that ask for the password alone keep the
- * username in one, as the Chromium password form guide suggests.
+ * counts for a username or an email, because sign-in pages that ask for the
+ * password alone keep the username in one, as the Chromium password form guide
+ * suggests. A hidden password is never read, since nobody typed it.
  */
 export function readable(input: FieldLike): Token | undefined {
-  if (input.type !== 'hidden' && !FILLABLE_TYPES.has(input.type)) {
-    return undefined;
+  const token = parseAutocomplete(input.getAttribute('autocomplete'));
+  if (input.type === 'hidden') {
+    return token?.field === 'username' || token?.field === 'email' ? token : undefined;
   }
-  return parseAutocomplete(input.getAttribute('autocomplete'));
+  return FILLABLE_TYPES.has(input.type) ? token : undefined;
 }
 
 /** The login token of `input` when the extension may also write it. */

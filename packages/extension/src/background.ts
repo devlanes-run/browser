@@ -101,8 +101,10 @@ const restored = restore().catch((error) => console.error(error));
 
 // Passwords sit in `storage.local`, which content scripts can read by default. Every
 // read goes through the background instead, which checks the frame's lane first.
-// Chrome 120 can only restrict `storage.session`, so older versions skip this, and
-// a throw here would stop the whole worker.
+// Chrome 120 can't restrict `storage.local`: in a test on 120.0.6099.109 the method
+// was missing there, and a version that has it but refuses rejects into the catch.
+// A call that threw here would stop the whole worker. On such a version page code
+// still can't reach the storage, but a compromised page renderer could read it.
 chrome.storage.local
   .setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' })
   .catch((error) => console.error(error));
@@ -116,7 +118,8 @@ const logins = new Logins({
   },
   store: {
     get: async (key) => (await chrome.storage.local.get(key))[key],
-    set: (key, value) => chrome.storage.local.set({ [key]: value })
+    set: (key, value) => chrome.storage.local.set({ [key]: value }),
+    remove: (key) => chrome.storage.local.remove(key)
   },
   now: Date.now,
   token: () => crypto.randomUUID()

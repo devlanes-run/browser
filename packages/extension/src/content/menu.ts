@@ -1,19 +1,25 @@
 import type { FromMenu, MenuHello, ToMenu } from '../logins';
 
-/** What the page sees of the menu frame. The shadow root is closed, so it sees no more. */
-const TAG = 'devlanes-login-menu';
+/**
+ * The tag name of the menu's host element, the only part of the menu the page can
+ * reach. A plain `div`, since a page could claim a custom element name first.
+ */
+const TAG = 'div';
 
-/** The gap between the field and the menu, and between the menu and the window's edges. */
+/** The gap between the field and the menu. */
 const GAP = 4;
+/** The closest the menu comes to the window's edges. */
 const MARGIN = 8;
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 360;
+/** How often an open menu checks that its field is still on the page and in the same place. */
+const WATCH_MS = 250;
 
 /**
- * The frame's look. It lives in the closed shadow root, so page styles reach only
- * the host element, whose own styles are set inline with `!important`.
+ * The frame's look and the hidden live region. They live in the closed shadow
+ * root, so page styles reach only the host element, whose styles are inline.
  */
-const FRAME_CSS = `
+const SHADOW_CSS = `
 iframe {
   display: block;
   width: 100%;
@@ -22,7 +28,41 @@ iframe {
   border-radius: 8px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 18%), 0 1px 3px rgb(0 0 0 / 12%);
 }
+.say {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 `;
+
+/**
+ * The host's own styles. `all: initial` comes first and everything is
+ * `!important`, which beats any page rule for the host. The properties a page
+ * could use to hide the menu or let clicks pass through it are set again by name.
+ */
+const HOST_STYLES: Record<string, string> = {
+  all: 'initial',
+  position: 'fixed',
+  inset: 'auto',
+  margin: '0',
+  padding: '0',
+  border: '0',
+  background: 'transparent',
+  overflow: 'visible',
+  // The frame lays out at the menu's width before it shows, so it can measure its height.
+  display: 'block',
+  visibility: 'hidden',
+  opacity: '1',
+  transform: 'none',
+  filter: 'none',
+  'clip-path': 'none',
+  'pointer-events': 'auto',
+  contain: 'none',
+  'color-scheme': 'normal'
+};
 
 /** What {@link LoginMenu} reports to the content script. */
 export interface MenuEvents {
@@ -44,14 +84,18 @@ export class LoginMenu {
   readonly host: HTMLElement;
   #port: MessagePort;
   #events: MenuEvents;
+  /** Where screen readers hear what the menu offers, since the keyboard stays in the page's field. */
+  #say: HTMLElement;
   #count = 0;
   #selected = -1;
   #height = 0;
   #frame = 0;
+  #watch: ReturnType<typeof setInterval>;
 
   /**
    * Builds the menu for `field` and starts loading its frame. It shows once the
-   * frame says how tall it is.
+   * frame says how tall it is. It throws when the page's code keeps it from
+   * building its shadow root.
    *
    * @param token The background's token for this menu, which the frame claims its logins with.
    */
@@ -61,27 +105,18 @@ export class LoginMenu {
     this.host = document.createElement(TAG);
     const root = this.host.attachShadow({ mode: 'closed' });
     const style = document.createElement('style');
-    style.textContent = FRAME_CSS;
+    style.textContent = SHADOW_CSS;
     const frame = document.createElement('iframe');
     const src = chrome.runtime.getURL('menu.html');
     frame.src = src;
     frame.title = 'devlanes saved logins';
-    root.append(style, frame);
+    this.#say = document.createElement('div');
+    this.#say.className = 'say';
+    this.#say.setAttribute('aria-live', 'polite');
+    root.append(style, frame, this.#say);
 
     this.host.popover = 'manual';
-    this.#style({
-      position: 'fixed',
-      inset: 'auto',
-      margin: '0',
-      padding: '0',
-      border: '0',
-      background: 'transparent',
-      overflow: 'visible',
-      // The frame lays out at the menu's width before it shows, so it can measure its height.
-      display: 'block',
-      visibility: 'hidden',
-      'color-scheme': 'normal'
-    });
+    this.#style(HOST_STYLES);
 
     const channel = new MessageChannel();
     this.#port = channel.port1;
@@ -102,6 +137,8 @@ export class LoginMenu {
 
     window.addEventListener('scroll', this.#schedule, { capture: true, passive: true });
     window.addEventListener('resize', this.#schedule, { passive: true });
+    // Scrolls and resizes don't cover a field the page removes or moves on its own.
+    this.#watch = setInterval(() => this.#placeOrClose(), WATCH_MS);
     document.documentElement.append(this.host);
     this.#place();
   }
@@ -143,6 +180,7 @@ export class LoginMenu {
     window.removeEventListener('scroll', this.#schedule, { capture: true });
     window.removeEventListener('resize', this.#schedule);
     cancelAnimationFrame(this.#frame);
+    clearInterval(this.#watch);
     this.#port.close();
     this.host.remove();
   }
@@ -167,6 +205,12 @@ export class LoginMenu {
       case 'hover':
         this.#selected = message.index;
         return;
+      case 'say':
+        // Set as text, never as HTML, though it comes from the extension's own frame.
+        if (typeof message.text === 'string') {
+          this.#say.textContent = message.text;
+        }
+        return;
       case 'pick':
         if (typeof message.username === 'string') {
           this.#events.pick(message.username);
@@ -189,9 +233,9 @@ export class LoginMenu {
     this.#frame = requestAnimationFrame(() => this.#placeOrClose());
   };
 
-  /** Places the menu, or closes it when its field left the page or has no box any more. */
+  /** Places the menu, or closes it when its field or its own element left the page. */
   #placeOrClose(): void {
-    if (!this.#place()) {
+    if (!this.host.isConnected || !this.#place()) {
       this.#events.close();
     }
   }
@@ -219,7 +263,10 @@ export class LoginMenu {
     return true;
   }
 
-  /** Sets `styles` on the host with `!important`, so page styles for the tag can't move it. */
+  /**
+   * Sets `styles` on the host with `!important`. Inline important styles win over
+   * every page rule, so a page stylesheet can't move or hide the menu.
+   */
   #style(styles: Record<string, string>): void {
     for (const [name, value] of Object.entries(styles)) {
       this.host.style.setProperty(name, value, 'important');

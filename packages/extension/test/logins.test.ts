@@ -53,6 +53,10 @@ function setup() {
       set: (key, value) => {
         store.set(key, structuredClone(value));
         return Promise.resolve();
+      },
+      remove: (key) => {
+        store.delete(key);
+        return Promise.resolve();
       }
     },
     now: () => clock.now,
@@ -143,6 +147,24 @@ describe('Logins', () => {
       )
     );
     assert.equal((store.get('logins:acme') as unknown[]).length, 3);
+  });
+
+  it('takes setting changes and deletes from the popup only', async () => {
+    const { store, ask } = setup();
+    await ask({ type: 'login:save', username: 'alice', password: 'pw' }, page(ACME0));
+    const popup: Sender = { id: ID, url: `chrome-extension://${ID}/popup.html` };
+    const forget = { type: 'popup:forget', project: 'acme' };
+    const off = { type: 'popup:setting', name: 'remember', on: false };
+    for (const sender of [page(ACME0), menuFrame()]) {
+      assert.equal(await ask(forget, sender), false);
+      assert.equal(await ask(off, sender), false);
+    }
+    assert.ok(store.has('logins:acme'));
+    assert.equal(store.get('settings'), undefined);
+    assert.equal(await ask(off, popup), true);
+    assert.deepEqual(store.get('settings'), { fill: true, remember: false });
+    assert.equal(await ask(forget, popup), true);
+    assert.equal(store.has('logins:acme'), false);
   });
 
   it('leaves messages that are not about logins to other listeners', () => {

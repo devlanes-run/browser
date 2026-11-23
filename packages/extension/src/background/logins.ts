@@ -18,6 +18,7 @@ import {
 export interface Store {
   get(key: string): Promise<unknown>;
   set(key: string, value: unknown): Promise<void>;
+  remove(key: string): Promise<void>;
 }
 
 /** The parts of `chrome.runtime.MessageSender` the background trusts. The browser sets them. */
@@ -65,6 +66,7 @@ export class Logins {
   #deps: LoginDeps;
   #tokens = new Map<string, Pending>();
   // Saves read, change and write one key, so two forms sent at once must not interleave.
+  // The popup's changes go through it too, so a delete can't lose to a save already running.
   #queue: Promise<unknown> = Promise.resolve();
 
   /** @param deps The browser parts, so tests can stand in for storage and the view. */
@@ -100,9 +102,31 @@ export class Logins {
         return typeof request.token === 'string'
           ? this.#claim(sender, request.token)
           : Promise.resolve(null);
+      case 'popup:setting':
+        return (request.name === 'fill' || request.name === 'remember') &&
+          typeof request.on === 'boolean' &&
+          this.#isPage(sender, '/popup.html')
+          ? this.#serial(() => this.#setting(request.name as keyof Settings, request.on as boolean))
+          : Promise.resolve(false);
+      case 'popup:forget':
+        return typeof request.project === 'string' && this.#isPage(sender, '/popup.html')
+          ? this.#serial(() => this.#forget(request.project as string))
+          : Promise.resolve(false);
       default:
         return undefined;
     }
+  }
+
+  /** Turns one setting on or off. */
+  async #setting(name: keyof Settings, on: boolean): Promise<boolean> {
+    await this.#deps.store.set(SETTINGS_KEY, { ...(await this.#settings()), [name]: on });
+    return true;
+  }
+
+  /** Deletes the saved logins of `project`. */
+  async #forget(project: string): Promise<boolean> {
+    await this.#deps.store.remove(loginsKey(project));
+    return true;
   }
 
   /** The settings for a frame on a lane, or `null` for any other frame. */
@@ -137,7 +161,7 @@ export class Logins {
    */
   async #claim(sender: Sender, token: string): Promise<Claimed | null> {
     const pending = this.#tokens.get(token);
-    if (!pending || !this.#isMenu(sender) || sender.tab?.id !== pending.tabId) {
+    if (!pending || !this.#isPage(sender, '/menu.html') || sender.tab?.id !== pending.tabId) {
       return null;
     }
     this.#tokens.delete(token);
@@ -207,15 +231,16 @@ export class Logins {
   }
 
   /**
-   * True when `sender` is this extension's menu page. Content scripts send with
-   * the page's URL, so they can't pass for it. The host may be a dynamic id.
+   * True when `sender` is this extension's page at `path`, such as `/menu.html`.
+   * Content scripts send with the page's URL, so they can't pass for one. The
+   * host may be a dynamic id.
    */
-  #isMenu(sender: Sender): boolean {
+  #isPage(sender: Sender, path: string): boolean {
     if (sender.id !== this.#deps.extensionId || !sender.url || !URL.canParse(sender.url)) {
       return false;
     }
     const url = new URL(sender.url);
-    return url.protocol === 'chrome-extension:' && url.pathname === '/menu.html';
+    return url.protocol === 'chrome-extension:' && url.pathname === path;
   }
 
   /** The current settings. */

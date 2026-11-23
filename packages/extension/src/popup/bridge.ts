@@ -1,6 +1,6 @@
 import type { UseParams } from '@devlanes/protocol';
 import {
-  loginsKey,
+  type PopupRequest,
   parseRecords,
   parseSettings,
   projectOf,
@@ -143,6 +143,7 @@ export function chromeBridge(): Bridge {
     },
     watchLogins(listener) {
       let stopped = false;
+      /** Hands `listener` the stored state, unless the popup stopped watching meanwhile. */
       const read = () => {
         chrome.storage.local.get(null).then(
           (items) => {
@@ -153,6 +154,7 @@ export function chromeBridge(): Bridge {
           (error) => console.error(error)
         );
       };
+      /** Reads the state again after any change to `storage.local`. */
       const changed = (_: unknown, area: string) => {
         if (area === 'local') {
           read();
@@ -166,12 +168,12 @@ export function chromeBridge(): Bridge {
       };
     },
     async setLoginSetting(name, on) {
-      const items = await chrome.storage.local.get(SETTINGS_KEY);
-      const settings: Settings = { ...parseSettings(items[SETTINGS_KEY]), [name]: on };
-      await chrome.storage.local.set({ [SETTINGS_KEY]: settings });
+      const request: PopupRequest = { type: 'popup:setting', name, on };
+      await chrome.runtime.sendMessage(request);
     },
-    forgetLogins(project) {
-      return chrome.storage.local.remove(loginsKey(project));
+    async forgetLogins(project) {
+      const request: PopupRequest = { type: 'popup:forget', project };
+      await chrome.runtime.sendMessage(request);
     }
   };
 }

@@ -131,16 +131,22 @@ async function openMenu(field: HTMLInputElement): Promise<void> {
   if (!token || typeof token !== 'string' || !field.matches(':focus') || menu) {
     return;
   }
-  const opened: LoginMenu = new LoginMenu(field, token, {
-    pick: (username) => {
-      fill(field, username).catch((error) => console.error(error));
-    },
-    close: () => {
-      if (menu === opened) {
-        closeMenu();
+  let opened: LoginMenu;
+  try {
+    opened = new LoginMenu(field, token, {
+      pick: (username) => {
+        fill(field, username).catch((error) => console.error(error));
+      },
+      close: () => {
+        if (menu === opened) {
+          closeMenu();
+        }
       }
-    }
-  });
+    });
+  } catch {
+    // The page's own code got in the way of the menu's element. The fill stays off for this field.
+    return;
+  }
   menu = opened;
 }
 
@@ -154,6 +160,10 @@ function menuField(event: Event): HTMLInputElement | undefined {
 document.addEventListener(
   'focusin',
   (event) => {
+    const input = inputOf(event);
+    if (input && readable(input)) {
+      watchRoot(input);
+    }
     const field = menuField(event);
     if (field && field === refocused) {
       refocused = undefined;
@@ -190,6 +200,10 @@ document.addEventListener(
 document.addEventListener(
   'click',
   (event) => {
+    // A page can dispatch clicks of its own, and only a person may open the menu this way.
+    if (!event.isTrusted) {
+      return;
+    }
     const field = menuField(event);
     if (field && !menu) {
       openMenu(field).catch((error) => console.error(error));
@@ -198,10 +212,30 @@ document.addEventListener(
   true
 );
 
-// On the window, so the menu's keys come before any listener of the page.
+/**
+ * Asks about the lane again on the first input from a person, when the first
+ * answer came before devlanes sent its view. A form sent right after needs the
+ * answer already, since `submit` can't wait for it.
+ */
+function recheckLane(event: Event): void {
+  if (event.isTrusted && settings === null) {
+    checkLane();
+  }
+}
+
+window.addEventListener('pointerdown', recheckLane, { capture: true, passive: true });
+
+// On the window in the capture phase, so the menu's keys come before the page's
+// listeners on the document and the field. A page listener added earlier in the
+// window's capture phase still runs first.
 window.addEventListener(
   'keydown',
   (event) => {
+    // A page could press the arrows and Enter itself, then read the filled password.
+    if (!event.isTrusted) {
+      return;
+    }
+    recheckLane(event);
     if (menu && inputOf(event) === menu.field) {
       if (menu.key(event)) {
         event.preventDefault();
@@ -217,24 +251,39 @@ window.addEventListener(
   true
 );
 
-document.addEventListener(
-  'submit',
-  (event) => {
-    // The values must be read now, since the page may navigate away before an answer.
-    if (!settings?.remember || !(event.target instanceof HTMLFormElement)) {
+/** Saves the login a form sends, when remembering is on. */
+function onSubmit(event: Event): void {
+  // A page can dispatch a submit event of its own, which could push out real logins.
+  // The values must be read now, since the page may navigate away before an answer.
+  if (!event.isTrusted || !settings?.remember || !(event.target instanceof HTMLFormElement)) {
+    return;
+  }
+  const found = candidates(event.target, readable);
+  for (const section of new Set(found.map((each) => each.token.section))) {
+    const login = submitted(loginFields(found, section));
+    if (login) {
+      ask({ type: 'login:save', ...login });
       return;
     }
-    const found = candidates(event.target, readable);
-    for (const section of new Set(found.map((each) => each.token.section))) {
-      const login = submitted(loginFields(found, section));
-      if (login) {
-        ask({ type: 'login:save', ...login });
-        return;
-      }
-    }
-  },
-  true
-);
+  }
+}
+
+document.addEventListener('submit', onSubmit, true);
+
+/** The shadow roots that already have a submit listener. */
+const watchedRoots = new WeakSet<ShadowRoot>();
+
+/**
+ * Listens for submits inside the shadow root of `field`. A submit event doesn't
+ * cross a shadow boundary, so the document never hears a form inside one.
+ */
+function watchRoot(field: HTMLInputElement): void {
+  const root = field.getRootNode();
+  if (root instanceof ShadowRoot && !watchedRoots.has(root)) {
+    watchedRoots.add(root);
+    root.addEventListener('submit', onSubmit, true);
+  }
+}
 
 chrome.runtime.onMessage.addListener((message: SettingsChanged, sender) => {
   if (sender.id !== chrome.runtime.id || message?.type !== 'login:settings' || !settings) {

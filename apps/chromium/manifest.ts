@@ -44,7 +44,8 @@ export function manifest(version: string): chrome.runtime.ManifestV3 {
         // The login menu shows in a frame of this page on lane pages.
         resources: ['menu.html'],
         matches: ['https://*.localhost/*'],
-        // A new id each browser session, so pages can't tell from a fixed URL that the extension is installed.
+        // A new id each browser session, so a page can't build the URL to frame `menu.html`
+        // itself. Chrome versions that don't enforce it yet still load the menu.
         use_dynamic_url: true
       }
     ]

@@ -140,6 +140,14 @@ export type ContentRequest =
   /** Answered with `true` when the login was saved. */
   | { type: 'login:save'; username: string; password: string };
 
+/**
+ * What the popup asks the background to change. They go through the background,
+ * so they wait for the saves it is running. Each is answered with `true` once done.
+ */
+export type PopupRequest =
+  | { type: 'popup:setting'; name: keyof Settings; on: boolean }
+  | { type: 'popup:forget'; project: string };
+
 /** What the menu frame asks the background: the logins for the token its content script sent it. */
 export interface MenuRequest {
   type: 'menu:claim';
@@ -173,6 +181,8 @@ export type FromMenu =
   | { type: 'hover'; index: number }
   /** Someone picked the login of `username`. */
   | { type: 'pick'; username: string }
+  /** What screen readers should hear now, since the focus stays in the page's field. */
+  | { type: 'say'; text: string }
   /** Someone pressed Escape inside the menu, or the menu has nothing to show. */
   | { type: 'close' };
 
