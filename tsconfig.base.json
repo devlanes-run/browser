@@ -2,6 +2,9 @@
   "compilerOptions": {
     "erasableSyntaxOnly": true,
     "exactOptionalPropertyTypes": true,
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "noEmit": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
