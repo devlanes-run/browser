@@ -116,7 +116,7 @@ export class FakeHost {
     this.#previous = readDefault();
     if (installed) {
       reg('add', WINDOWS_KEY, '/ve', '/t', 'REG_SZ', '/d', this.#manifest, '/f');
-    } else if (this.#previous !== null) {
+    } else if (rawDefault() !== null) {
       reg('delete', WINDOWS_KEY, '/f');
     }
   }
@@ -127,7 +127,7 @@ export class FakeHost {
       return;
     }
     if (this.#previous === null) {
-      if (readDefault() !== null) {
+      if (rawDefault() !== null) {
         reg('delete', WINDOWS_KEY, '/f');
       }
     } else {
@@ -179,10 +179,17 @@ function reg(...args: string[]): string | undefined {
  * missing, so a crashed run never becomes the value to put back.
  */
 function readDefault(): string | null {
-  const value = reg('query', WINDOWS_KEY, '/ve')
-    ?.match(/REG_SZ\s+(.*)/)?.[1]
-    ?.trim();
+  const value = rawDefault();
   return value && !value.includes(TEST_FOLDER_PREFIX) ? value : null;
+}
+
+/** The default value of the Windows host key as it is, or `null` when it is missing. */
+function rawDefault(): string | null {
+  return (
+    reg('query', WINDOWS_KEY, '/ve')
+      ?.match(/REG_SZ\s+(.*)/)?.[1]
+      ?.trim() ?? null
+  );
 }
 
 /** The start of every test folder's name, so leftovers can be told apart from a real host. */
