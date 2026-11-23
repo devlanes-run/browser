@@ -154,6 +154,9 @@ export class HostConnection {
     }
     if ('event' in message) {
       if (message.event === 'view') {
+        // A host that answers hello and then exits would reset the backoff on every
+        // try, so only a view proves the connection works.
+        this.#failures = 0;
         this.#update({ view: message.data });
       } else if (message.event === 'daemon') {
         this.#setStatus(daemonStatus(message.data.state, message.data.message));
@@ -226,7 +229,6 @@ export class HostConnection {
       this.#fail(port, String(error));
       return;
     }
-    this.#failures = 0;
     this.#setStatus(daemonStatus(daemon));
     const id = this.#nextId++;
     this.#pending.set(id, { method: 'watch' });

@@ -120,11 +120,15 @@ describe('HostConnection', () => {
     assert.equal(ports.length, 3);
   });
 
-  it('retries a host that went away with growing delays, and resets them once hello works', () => {
+  it('waits longer after each failure, even when hello works, until a view arrives', () => {
     const { host, ports, retries, state } = setup();
     host.ensure();
+    // A host that answers hello and then exits still counts as failing.
     for (let attempt = 0; attempt < 3; attempt++) {
-      ports.at(-1)?.lose('Native host has exited.');
+      const port = ports.at(-1);
+      assert.ok(port);
+      hello(port);
+      port.lose('Native host has exited.');
       retries.at(-1)?.run();
     }
     assert.deepEqual(
@@ -134,10 +138,29 @@ describe('HostConnection', () => {
     const port = ports.at(-1);
     assert.ok(port);
     hello(port);
-    assert.equal(state(), 'running');
+    port.receive({ event: 'view', data: { boxes: [], projects: [] } });
     port.lose('Native host has exited.');
     assert.equal(state(), 'host_failed');
     assert.equal(retries.at(-1)?.ms, 1000);
+  });
+
+  it('answers a use whose reply is malformed, and keeps the port', async () => {
+    const { host, ports, state } = setup();
+    host.ensure();
+    const port = ports[0];
+    assert.ok(port);
+    hello(port);
+    const reply = host.request('use', { lane: 'acme@0', box: 'fork-b' });
+    port.receive({ id: port.idOf('use'), result: { lane: 1 } });
+    const answer = await reply;
+    assert.equal(answer.ok, false);
+    assert.equal(!answer.ok && answer.error.code, 'unknown');
+    assert.equal(
+      !answer.ok && 'host_code' in answer.error && answer.error.host_code,
+      'invalid_reply'
+    );
+    assert.equal(port.closed, false);
+    assert.equal(state(), 'running');
   });
 
   it('drops a malformed event but gives up on a malformed or failed reply to its own requests', () => {
