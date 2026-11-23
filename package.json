@@ -1,0 +1,43 @@
+{
+  "name": "devlanes-browser",
+  "private": true,
+  "description": "The devlanes browser extension",
+  "homepage": "https://github.com/devlanes-run/browser#readme",
+  "bugs": {
+    "url": "https://github.com/devlanes-run/browser/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devlanes-run/browser.git"
+  },
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "format": "biome format --write .",
+    "lint": "biome check package.json biome.json tsconfig.base.json && pnpm -r lint",
+    "lint-ci": "biome ci package.json biome.json tsconfig.base.json && pnpm -r lint-ci",
+    "lint-fix": "biome check --write --unsafe .",
+    "test": "pnpm -r test",
+    "test-types": "pnpm -r test-types",
+    "zip": "pnpm -r zip"
+  },
+  "devDependencies": {
+    "@arthurfiorette/biomejs-config": "^2.0.1",
+    "@biomejs/biome": "^2.6.8",
+    "@types/node": "^24.19.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24.16"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "onFail": "error",
+      "version": ">=24.16"
+    }
+  }
+}
