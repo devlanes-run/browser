@@ -258,6 +258,12 @@ test('"Remember passwords" off saves nothing, and "Fill logins on lanes" off ope
   expect(sent.filter((each) => each.type === 'login:menu')).toEqual([]);
   // Bob's submit came before carol's, so a save of bob's login would be done by now.
   expect(JSON.stringify(await lab.stored('logins:acme'))).not.toContain('bob@');
+  // Bob's page never asked to save, so the background didn't refuse it in his place.
+  expect(
+    (await messages(lab)).filter(
+      (each) => each.type === 'login:save' && each.username === 'bob@example.invalid'
+    )
+  ).toEqual([]);
 });
 
 test("the page's own keys, clicks and submits never fill or save anything", async ({ launch }) => {
