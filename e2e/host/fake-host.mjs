@@ -137,5 +137,6 @@ function drain() {
   }
 }
 
-// Polling stands in for fs.watch, which misses appends on some file systems.
+// Polling stands in for fs.watch, which Node documents as unreliable on network
+// file systems such as NFS and SMB, where a test folder could sit.
 setInterval(drain, 25);

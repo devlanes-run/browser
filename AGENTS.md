@@ -62,7 +62,7 @@ pnpm e2e
 ```
 
 - Tests run with `tsx --test`.
-- `pnpm e2e` builds the extension and runs the Playwright suite in `e2e/tests/` against it. Install the browser once with `pnpm --filter @devlanes/e2e exec playwright install chromium`. A change to the popup, the background or the login fill needs it to pass.
+- `pnpm e2e` builds the extension and runs the Playwright suite in `e2e/tests/` against it. `E2E_DIST` points the suite at another build's `dist` folder. Install the browser once with `pnpm --filter @devlanes/e2e exec playwright install chromium`. On Linux, add `--with-deps` the first time, so Playwright installs the libraries Chromium needs. A change to the popup, the background or the login fill needs the suite to pass.
 - End-to-end tests wait on something the page or the host does, never on a fixed sleep, and every wait has a bound. A test that checks something didn't happen first waits for a later event that must come after it.
 - The fake host in `e2e/host/fake-host.mjs` plays the JSON scenario a test gives it and logs every request. On Windows the tests share one registry key, so they run one at a time.
 - When a test fails intermittently, locally or in CI, fix the flake instead of rerunning it until it passes.

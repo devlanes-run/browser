@@ -32,7 +32,7 @@ test('the popup lists lanes with their routes and highlights the current tab', a
   ]);
 });
 
-test('the badge shows the lane number, marked and blue when a box serves the lane', async ({
+test('the badge shows the lane number, with a dot and in blue when a box serves the lane', async ({
   launch
 }) => {
   const local = await launch({ scenario: { view: LOCAL } });
@@ -82,7 +82,7 @@ test.describe('the box switch', () => {
     }
   };
 
-  test('sends use for the box picked', async ({ launch }) => {
+  test('sends use with the lane and the box picked', async ({ launch }) => {
     const lab = await launch({ scenario: { view: BOXES } });
     await lab.connected();
     const popup = await lab.popup(await lab.open('https://app.acme.localhost/'));

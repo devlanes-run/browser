@@ -1,5 +1,4 @@
 // Views the fake host sends, after the examples in the native host contract.
-// Names are neutral: acme and shop, boxes fork-a and fork-b.
 
 import type { Lane, Route, Source, View } from '@devlanes/protocol';
 
