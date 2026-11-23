@@ -339,6 +339,19 @@ export const CASES: Case[] = [
     clicks: ['Login settings']
   },
   {
+    name: 'settings-remember-off',
+    title: 'Remembering off with logins still saved',
+    snapshot: { status: running, devlanes: '0.15.0', view: LOCAL_VIEW, notices: [] },
+    logins: { ...SAVED, settings: { fill: true, remember: false } },
+    clicks: ['Login settings']
+  },
+  {
+    name: 'settings-delete',
+    title: 'Delete asking for a second click',
+    snapshot: { status: running, devlanes: '0.15.0', view: LOCAL_VIEW, notices: [] },
+    clicks: ['Login settings', 'Delete the saved logins of acme']
+  },
+  {
     name: 'host-failed',
     title: 'Host stopped',
     snapshot: {

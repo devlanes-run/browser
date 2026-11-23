@@ -17,6 +17,13 @@ export interface MenuProps {
   selected?: number;
 }
 
+/** What screen readers hear when the menu opens. */
+function offer(project: string, count: number): string {
+  return count === 1
+    ? `devlanes has 1 saved login for ${project}. Press Down to choose it.`
+    : `devlanes has ${count} saved logins for ${project}. Press Down to choose one.`;
+}
+
 /**
  * The list of a project's saved logins under a sign-in field. The keyboard stays
  * in the page's field, so the content script sends the arrow keys and Enter
@@ -60,7 +67,19 @@ export function Menu({ claimed, channel, selected: initial = -1 }: MenuProps) {
   useLayoutEffect(() => {
     const height = Math.ceil(list.current?.getBoundingClientRect().height ?? 0);
     channel.post({ type: 'ready', count: logins.length, height });
-  }, [channel, logins.length]);
+    channel.post({ type: 'say', text: offer(project, logins.length) });
+  }, [channel, project, logins.length]);
+
+  // The focus stays in the page's field, so screen readers hear each highlight through the content script.
+  useEffect(() => {
+    const login = logins[selected];
+    if (login) {
+      channel.post({
+        type: 'say',
+        text: `${login.username}, ${login.lane}, ${selected + 1} of ${logins.length}.`
+      });
+    }
+  }, [channel, logins, selected]);
 
   // Scrolls only the list. `scrollIntoView` would also scroll the page around the menu.
   useEffect(() => {
@@ -124,6 +143,9 @@ export function Menu({ claimed, channel, selected: initial = -1 }: MenuProps) {
             role="option"
             tabIndex={-1}
             aria-selected={index === selected}
+            aria-label={`${login.username}, last used on ${login.lane}`}
+            // A long username is cut short in the list, so the full one shows on hover.
+            title={login.username}
             onPointerMove={() => index !== selected && hover(index)}
             onClick={() => pick(index)}
           >

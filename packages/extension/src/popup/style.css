@@ -484,8 +484,12 @@ p code {
   }
 
   &[aria-pressed="true"] {
-    background: var(--hover);
+    background: var(--well);
     color: var(--ink);
+
+    circle {
+      fill: var(--well);
+    }
   }
 }
 
@@ -527,6 +531,8 @@ p code {
     margin: 0;
     border-radius: 9999px;
     background: var(--line);
+    /* The ring keeps an off switch visible: the track alone is close to the light surface. */
+    box-shadow: inset 0 0 0 1px var(--tertiary);
     appearance: none;
     cursor: pointer;
     transition: background 0.15s;
@@ -545,6 +551,7 @@ p code {
 
     &:checked {
       background: var(--paint);
+      box-shadow: none;
 
       &::before {
         background: var(--on-paint);
@@ -573,6 +580,11 @@ p code {
     min-height: 26px;
     margin-left: auto;
     font-size: 12px;
+
+    &.armed {
+      border-color: var(--error);
+      color: var(--error);
+    }
   }
 }
 
