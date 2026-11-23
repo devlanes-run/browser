@@ -5,7 +5,7 @@ import { pluginPreact } from '@rsbuild/plugin-preact';
 export default defineConfig({
   plugins: [pluginPreact({ reactAliasesEnabled: false })],
   source: {
-    entry: { index: './preview/index.tsx' }
+    entry: { index: './preview/index.tsx', menu: './preview/menu.tsx' }
   },
   html: {
     title: 'devlanes popup preview'

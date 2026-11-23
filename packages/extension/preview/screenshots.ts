@@ -5,7 +5,7 @@
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
-import { CASES } from './cases';
+import { CASES, MENU_CASES } from './cases';
 
 const index = pathToFileURL(fileURLToPath(new URL('./dist/index.html', import.meta.url)));
 const out = fileURLToPath(new URL('./screenshots/', import.meta.url));
@@ -31,8 +31,9 @@ try {
         await page.getByRole('button', { name, exact: true }).click();
       }
       if (preview.clicks) {
-        // The fake background answers after 300 ms. Wait for the answer, not for a fixed time.
-        await page.locator('.flow:not([role="status"])').waitFor();
+        // The fake background answers a switch after 300 ms. Wait for the answer, or for
+        // the settings a click opened, not for a fixed time.
+        await page.locator('.flow:not([role="status"]), .settings').first().waitFor();
       }
       if (preview.focus) {
         // Tab first, so the browser draws the ring as it does for keyboard focus.
@@ -44,6 +45,23 @@ try {
       console.log(file);
     }
     await page.close();
+
+    // The menu is as wide as its field, at least 240 px, and the content script sizes its height.
+    const menuPage = await browser.newPage({
+      viewport: { width: 300, height: 300 },
+      deviceScaleFactor: 2,
+      colorScheme,
+      reducedMotion: 'reduce'
+    });
+    for (const preview of MENU_CASES) {
+      const url = new URL('./dist/menu.html', import.meta.url);
+      url.searchParams.set('menu', preview.name);
+      await menuPage.goto(url.href);
+      const file = `${out}menu-${preview.name}-${colorScheme}.png`;
+      await menuPage.locator('.menu').screenshot({ path: file });
+      console.log(file);
+    }
+    await menuPage.close();
   }
 } finally {
   await browser.close();

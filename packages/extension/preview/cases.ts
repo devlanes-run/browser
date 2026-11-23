@@ -2,6 +2,8 @@
 // They use fake names only (acme, shop, fork-a).
 
 import type { Lane, Route, Source, View } from '@devlanes/protocol';
+import type { Claimed } from '../src/logins';
+import type { LoginState } from '../src/popup/bridge';
 import type { Snapshot, UseMethod, UseReply } from '../src/state';
 
 /** One state of the popup, with the answers its fake background gives. */
@@ -17,7 +19,56 @@ export interface Case {
   clicks?: string[];
   /** The button the screenshot gives keyboard focus last, by accessible name. */
   focus?: string;
+  /** The login settings and saved logins. Without it, both settings are on and two projects have logins. */
+  logins?: LoginState;
 }
+
+/** The saved logins of the settings cases. */
+export const SAVED: LoginState = {
+  settings: { fill: true, remember: true },
+  saved: [
+    { project: 'acme', count: 3 },
+    { project: 'shop', count: 1 }
+  ]
+};
+
+/** One state of the login menu. */
+export interface MenuCase {
+  name: string;
+  title: string;
+  claimed: Claimed;
+  /** The login highlighted, as after the arrow keys. */
+  selected?: number;
+}
+
+const ACME_LOGINS: Claimed = {
+  project: 'acme',
+  logins: [
+    { username: 'alice@example.invalid', lane: 'acme@1', used: 3 },
+    { username: 'admin', lane: 'acme@0', used: 2 },
+    {
+      username: 'a-very-long-test-account-name-for-checkout@example.invalid',
+      lane: 'acme@2',
+      used: 1
+    }
+  ]
+};
+
+/** Every menu case, in the order the index lists them. */
+export const MENU_CASES: MenuCase[] = [
+  { name: 'logins', title: 'Saved logins of a project', claimed: ACME_LOGINS },
+  {
+    name: 'selected',
+    title: 'A login picked with the arrow keys',
+    claimed: ACME_LOGINS,
+    selected: 1
+  },
+  {
+    name: 'one',
+    title: 'One saved login',
+    claimed: { project: 'shop', logins: [{ username: 'buyer', lane: 'shop@0', used: 1 }] }
+  }
+];
 
 /** A ready route of `service` on `host`. */
 function route(host: string, service: string, state = 'ready'): Route {
@@ -273,6 +324,19 @@ export const CASES: Case[] = [
     name: 'protocol-mismatch',
     title: 'Protocol mismatch',
     snapshot: { status: { state: 'protocol_mismatch', supported: [2] }, notices: [] }
+  },
+  {
+    name: 'settings',
+    title: 'Login settings with saved logins',
+    snapshot: { status: running, devlanes: '0.15.0', view: LOCAL_VIEW, notices: [] },
+    clicks: ['Login settings']
+  },
+  {
+    name: 'settings-off',
+    title: 'Login settings turned off, nothing saved',
+    snapshot: { status: running, devlanes: '0.15.0', view: LOCAL_VIEW, notices: [] },
+    logins: { settings: { fill: false, remember: false }, saved: [] },
+    clicks: ['Login settings']
   },
   {
     name: 'host-failed',
