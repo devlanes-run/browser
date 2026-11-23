@@ -1,0 +1,25 @@
+{
+  "name": "@devlanes/chromium",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The devlanes extension for Chrome, Chromium, Brave and Edge",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "rsbuild build",
+    "lint": "biome check .",
+    "lint-ci": "biome ci .",
+    "test": "tsx --test test/*.test.ts",
+    "test-types": "tsc --noEmit",
+    "zip": "web-ext build --source-dir dist --artifacts-dir artifacts --overwrite-dest"
+  },
+  "dependencies": {
+    "@devlanes/extension": "workspace:*"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "^2.3.3",
+    "@rsbuild/plugin-preact": "^2.1.0",
+    "@types/chrome": "^0.3.7",
+    "web-ext": "^10.8.0"
+  }
+}
