@@ -17,10 +17,11 @@
   --bars: #3d3b36;
   --paint: #f5c542;
   --on-paint: #24231f;
-  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --prose: "Overpass", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --well: #dedcd5;
+  /* The website's Overpass and JetBrains Mono aren't bundled, so the stacks name what renders. */
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --prose: system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --well: color-mix(in srgb, var(--ink) 6%, transparent);
   --hover: color-mix(in srgb, var(--ink) 7%, transparent);
   --rule: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
   --here: color-mix(in srgb, var(--paint) 16%, transparent);
@@ -40,6 +41,8 @@
     --success: #4cbf7f;
     --focus: #f5c542;
     --bars: #c9c6bd;
+    /* The terminal's title bar, the dark well of the mcp-ui card. */
+    --well: #22211f;
     --rule: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
     --here: color-mix(in srgb, var(--paint) 9%, transparent);
   }
@@ -142,23 +145,19 @@ code {
   margin-top: 14px;
 }
 
-/* Old data reads as old while the daemon or the host is away. */
-main.dim .project {
-  opacity: 0.7;
-}
-
 .meta {
-  color: var(--tertiary);
+  color: var(--muted);
   font-size: 12px;
 }
 
 .line {
   margin-top: 10px;
   overflow-wrap: anywhere;
+}
 
-  .meta {
-    margin-top: 2px;
-  }
+/* A command inside a sentence stays on one line, so it never breaks at its dashes. */
+p code {
+  white-space: nowrap;
 }
 
 .notices {
@@ -275,6 +274,12 @@ main.dim .project {
     flex-wrap: wrap;
     column-gap: 10px;
     padding-left: 16px;
+  }
+
+  > .line2 {
+    margin-top: 2px;
+    padding-left: 16px;
+    font-size: 12px;
   }
 
   .branch {
@@ -459,13 +464,10 @@ main.dim .project {
   code {
     flex: 1;
     min-width: 0;
-    padding-top: 2px;
-
-    span {
-      display: inline-block;
-      max-width: 100%;
-      overflow-wrap: anywhere;
-    }
+    padding: 2px 0 4px;
+    /* A command is copied and pasted whole, so it keeps one line and scrolls when long. */
+    white-space: pre;
+    overflow-x: auto;
   }
 }
 

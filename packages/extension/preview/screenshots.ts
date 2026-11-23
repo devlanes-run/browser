@@ -34,6 +34,11 @@ try {
         // The fake background answers after 300 ms. Wait for the answer, not for a fixed time.
         await page.locator('.flow:not([role="status"])').waitFor();
       }
+      if (preview.focus) {
+        // Tab first, so the browser draws the ring as it does for keyboard focus.
+        await page.keyboard.press('Tab');
+        await page.getByRole('button', { name: preview.focus }).focus();
+      }
       const file = `${out}${preview.name}-${colorScheme}.png`;
       await page.screenshot({ path: file, fullPage: true });
       console.log(file);

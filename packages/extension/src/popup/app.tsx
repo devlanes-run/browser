@@ -7,6 +7,9 @@ import type { Bridge } from './bridge';
 import { Cross, LaneItem } from './lane';
 import { boxDown, type ShapeName } from './words';
 
+/** Where the protocol mismatch text sends people for a newer extension. */
+const REPOSITORY = 'https://github.com/devlanes-run/browser';
+
 /** The devlanes mark: three rounded bars staggered right, the top one in paint. */
 function Mark() {
   return (
@@ -22,11 +25,11 @@ function Mark() {
 const STATUS: Record<Status['state'], { word: string; shape: ShapeName }> = {
   connecting: { word: 'Connecting', shape: 'busy' },
   running: { word: 'Running', shape: 'ok' },
-  daemon_stopped: { word: 'Stopped', shape: 'idle' },
-  outdated: { word: 'Outdated', shape: 'warn' },
+  daemon_stopped: { word: 'Daemon stopped', shape: 'idle' },
+  outdated: { word: 'Daemon outdated', shape: 'warn' },
   not_installed: { word: 'Not set up', shape: 'warn' },
   protocol_mismatch: { word: 'Incompatible', shape: 'fail' },
-  host_failed: { word: 'Host stopped', shape: 'fail' }
+  host_failed: { word: 'Not connected', shape: 'fail' }
 };
 
 /** Shell commands inside a sentence, in the mono font. */
@@ -34,8 +37,12 @@ function Cmd({ children }: { children: ComponentChildren }) {
   return <code>{children}</code>;
 }
 
-/** What's wrong with the connection and what to do, or nothing while it works. */
-function StatusLine({ status }: { status: Status }) {
+/**
+ * What's wrong with the connection and what to do, or nothing while it works.
+ * Known states get the popup's own sentence, with commands in mono, so the
+ * daemon's plain-text message is never shown for them.
+ */
+function StatusLine({ status, bridge }: { status: Status; bridge: Bridge }) {
   switch (status.state) {
     case 'connecting':
     case 'running':
@@ -43,47 +50,50 @@ function StatusLine({ status }: { status: Status }) {
     case 'daemon_stopped':
       return (
         <p class="line warn">
-          {status.message ?? (
-            <>
-              devlanes isn't running. Run <Cmd>devlanes</Cmd> in a terminal.
-            </>
-          )}
+          devlanes isn't running. Run <Cmd>devlanes</Cmd> in a terminal.
         </p>
       );
     case 'outdated':
       return (
         <p class="line warn">
-          {status.message ?? (
-            <>
-              The devlanes daemon is older than its browser host. Restart it with{' '}
-              <Cmd>devlanes daemon restart</Cmd>.
-            </>
-          )}
+          The devlanes daemon is out of date. Restart the daemon with{' '}
+          <Cmd>devlanes daemon restart</Cmd>.
         </p>
       );
     case 'not_installed':
       return (
         <p class="line warn">
-          The devlanes host isn't set up for this browser. Run <Cmd>devlanes setup --browser</Cmd>,
-          then reopen this popup.
+          devlanes isn't set up for this browser. Run <Cmd>devlanes setup</Cmd>, then reopen this
+          popup.
         </p>
       );
     case 'protocol_mismatch':
-      return (
+      return Math.max(...status.supported) > PROTOCOL_VERSION ? (
         <p class="line danger">
-          {Math.max(...status.supported) > PROTOCOL_VERSION
-            ? 'This version of devlanes is newer than the extension. Update the extension from devlanes-run/browser, then reopen this popup.'
-            : 'This extension needs a newer devlanes. Update devlanes, then reopen this popup.'}
+          This version of devlanes is newer than the extension. Update the extension from{' '}
+          <a
+            class="lk"
+            href={REPOSITORY}
+            onClick={(event) => {
+              event.preventDefault();
+              bridge.open(REPOSITORY);
+            }}
+          >
+            devlanes-run/browser
+          </a>
+          , then reopen this popup.
+        </p>
+      ) : (
+        <p class="line danger">
+          This extension needs a newer devlanes. Update devlanes, then reopen this popup.
         </p>
       );
     case 'host_failed':
       return (
-        <div class="line danger">
-          <p>
-            The devlanes host stopped. Run <Cmd>devlanes doctor</Cmd> to check the browser setup.
-          </p>
-          <p class="meta">{status.detail}</p>
-        </div>
+        <p class="line danger">
+          The extension lost its connection to devlanes. It tries again in a few seconds. If this
+          stays, run <Cmd>devlanes doctor</Cmd>.
+        </p>
       );
   }
 }
@@ -109,22 +119,23 @@ export function App({ bridge }: { bridge: Bridge }) {
 
   const { status, view, notices } = snapshot;
   const live = status.state === 'running';
+  const stale = !live && status.state !== 'connecting' && (view?.projects.length ?? 0) > 0;
   const at = view && page ? findRoute(view, page.hostname) : undefined;
   const down = view?.boxes.filter((box) => box.state !== 'connected') ?? [];
   const head = STATUS[status.state];
 
   return (
-    <main class={live || status.state === 'connecting' ? '' : 'dim'}>
+    <main>
       <header class="top">
         <Mark />
         <span class="brand">devlanes</span>
         {snapshot.devlanes && <span class="ver ter">{snapshot.devlanes}</span>}
-        <span class="end">
+        <span class="end" role="status">
           <span class={`st ${head.shape}`} aria-hidden="true" />
           <span>{head.word}</span>
         </span>
       </header>
-      <StatusLine status={status} />
+      <StatusLine status={status} bridge={bridge} />
       {notices.length > 0 && (
         <ul class="notices">
           {notices.map(({ id, notice }) => (
@@ -133,7 +144,7 @@ export function App({ bridge }: { bridge: Bridge }) {
               <button
                 type="button"
                 class="x"
-                aria-label="Dismiss"
+                aria-label="Dismiss notice"
                 onClick={() => bridge.dismiss(id)}
               >
                 <Cross />
@@ -150,6 +161,13 @@ export function App({ bridge }: { bridge: Bridge }) {
       {view && view.projects.length === 0 && (
         <p class="line">
           devlanes has no projects yet. Run <Cmd>devlanes start</Cmd> in a project to add one.
+        </p>
+      )}
+      {stale && (
+        <p class="line sec">
+          {status.state === 'daemon_stopped'
+            ? 'These lanes are from before devlanes stopped.'
+            : 'These lanes are from before the extension lost its connection to devlanes.'}
         </p>
       )}
       {view &&

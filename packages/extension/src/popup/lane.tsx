@@ -1,18 +1,10 @@
-import type { Lane, Source, UseResult } from '@devlanes/protocol';
-import { Fragment } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import type { Lane, Route, Source } from '@devlanes/protocol';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { mainSource, openable, pageIn, type RouteAt } from '../lanes';
-import type { UseMethod, UseReply } from '../state';
+import type { UseMethod } from '../state';
 import type { Bridge } from './bridge';
+import { type Flow, placeOf, replyFlow } from './flow';
 import { shapeOf, skipWords, wordClass, words } from './words';
-
-/** What a lane shows under its routes while a switch runs or after it answered. */
-type Flow =
-  | { kind: 'busy'; text: string }
-  | { kind: 'confirm'; box: string | null; localLane: string }
-  | { kind: 'commands'; text: string; box: string | null; commands: string[] }
-  | { kind: 'note'; text: string }
-  | { kind: 'error'; text: string };
 
 /** The props of {@link LaneItem}. */
 export interface LaneProps {
@@ -26,53 +18,18 @@ export interface LaneProps {
   live: boolean;
 }
 
-/** The 8 px shape of a state, with the state as its accessible name. */
+/** The 8 px shape of a state. Hidden from screen readers, since a word next to it says the state. */
 export function Shape({ state }: { state: string }) {
-  return <span class={`st ${shapeOf(state)}`} role="img" aria-label={words(state)} />;
+  return <span class={`st ${shapeOf(state)}`} aria-hidden="true" />;
 }
 
-/** Where a source runs, in words. */
-function placeOf(box: string | null): string {
-  return box ?? 'this machine';
-}
-
-/** The line a successful switch leaves, or `undefined` when the view says it all. */
-function resultFlow(result: UseResult): Flow | undefined {
-  if (!result.pending) {
-    return undefined;
-  }
-  const to = placeOf(result.box);
-  const once =
-    result.waits_for === 'connect' ? `once ${to} connects` : 'once this machine mirrors it';
-  return { kind: 'note', text: `${result.lane} switches to ${to} ${once}.` };
-}
-
-/** The flow that follows `reply` to a switch of `lane` to `box`. */
-function replyFlow(lane: Lane, box: string | null, reply: UseReply): Flow | undefined {
-  if (reply.ok) {
-    return resultFlow(reply.result);
-  }
-  const { error } = reply;
-  if (error.code === 'local_lane_running') {
-    const { holds, local_lane, commands } = error.data;
-    return holds === 'processes'
-      ? { kind: 'confirm', box, localLane: local_lane }
-      : {
-          kind: 'commands',
-          text: `The containers of ${local_lane} hold its ports. Run these commands, then switch again.`,
-          box,
-          commands
-        };
-  }
-  if (error.code === 'containers_hold_ports') {
-    return {
-      kind: 'commands',
-      text: `${lane.ref} stopped on this machine, but its containers still hold the ports. Run these commands, then switch again.`,
-      box,
-      commands: error.data.commands
-    };
-  }
-  return { kind: 'error', text: error.message };
+/**
+ * The hover text of a route link, only when the link text hides part of the URL.
+ * The text is the host and port, so a URL with a path gets its full form.
+ */
+function routeTitle(route: Route): string | undefined {
+  const url = new URL(route.url);
+  return url.pathname === '/' && !url.search && !url.hash ? undefined : route.url;
 }
 
 /** A command on one line, with a button that copies it. */
@@ -87,19 +44,11 @@ function Command({ bridge, command }: { bridge: Bridge; command: string }) {
   }, [copied]);
   return (
     <li class="cmd">
-      {/* One box per word, so a container name such as acme-mail-1 never wraps at its hyphens. */}
-      <code>
-        {command.split(' ').map((word, index) => (
-          <Fragment key={index}>
-            {index > 0 && ' '}
-            <span>{word}</span>
-          </Fragment>
-        ))}
-      </code>
+      <code>{command}</code>
       <button
         type="button"
         class="copy"
-        aria-label={`Copy ${command}`}
+        aria-label={copied ? `Copied ${command}` : `Copy ${command}`}
         onClick={() => {
           bridge.copy(command).then(
             () => setCopied(true),
@@ -107,9 +56,22 @@ function Command({ bridge, command }: { bridge: Bridge; command: string }) {
           );
         }}
       >
-        {copied ? 'Copied' : 'Copy'}
+        <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
       </button>
     </li>
+  );
+}
+
+/** What to do about a lane nothing serves. */
+function Unserved({ lane }: { lane: Lane }) {
+  return lane.sources.some((source) => source.box === null) ? (
+    <p class="line2 warn">
+      Nothing serves {lane.ref}. Start it with <code>devlanes start --lane {lane.ref}</code>.
+    </p>
+  ) : (
+    <p class="line2 warn">
+      Nothing serves {lane.ref}. It comes back when a box that has it connects.
+    </p>
   );
 }
 
@@ -120,10 +82,12 @@ function Command({ bridge, command }: { bridge: Bridge; command: string }) {
  */
 export function LaneItem({ bridge, lane, siblings, here, live }: LaneProps) {
   const [flow, setFlow] = useState<Flow | undefined>();
+  const picker = useRef<HTMLFieldSetElement>(null);
   const source = mainSource(lane);
   const state = source?.state ?? 'idle';
+  const unserved = lane.served_by === undefined;
   const branch = lane.sources.find((each) => each.branch !== null)?.branch;
-  const picker = lane.sources.length > 1;
+  const many = lane.sources.length > 1;
   const busy = flow?.kind === 'busy';
 
   /** Sends `method` to switch the lane to `box`, showing its progress and answer. */
@@ -150,6 +114,15 @@ export function LaneItem({ bridge, lane, siblings, here, live }: LaneProps) {
     send('use', target.box);
   };
 
+  /** Closes the panel and gives the focus back to the picker it came from. */
+  const close = () => {
+    setFlow(undefined);
+    // The picker's buttons are disabled while a switch runs, so this waits for the render.
+    requestAnimationFrame(() =>
+      picker.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
+    );
+  };
+
   const targets = here
     ? siblings.flatMap((other) => {
         const url = pageIn(here.at, here.page, other);
@@ -164,20 +137,15 @@ export function LaneItem({ bridge, lane, siblings, here, live }: LaneProps) {
         <span class="ref">{lane.ref}</span>
         <span class="sub">{lane.name}</span>
         {here && <span class="pill accent">This tab</span>}
-        <span class={`end ${wordClass(state)}`}>{words(state)}</span>
+        <span class={`end ${unserved ? 'warn' : wordClass(state)}`}>{words(state)}</span>
       </div>
-      {(branch || !picker) && (
+      {((branch && branch !== lane.name) || (!many && lane.served_by)) && (
         <p class="meta">
           {branch && branch !== lane.name && <span class="branch">{branch}</span>}
-          {!picker && lane.served_by !== null && (
-            <span>
-              {lane.served_by === undefined
-                ? 'Nothing serves this lane.'
-                : `Served by ${lane.served_by}`}
-            </span>
-          )}
+          {!many && lane.served_by && <span>Served by {lane.served_by}</span>}
         </p>
       )}
+      {unserved && <Unserved lane={lane} />}
       {lane.routes.length > 0 && (
         <ul class="routes">
           {lane.routes.map((route) => (
@@ -186,20 +154,20 @@ export function LaneItem({ bridge, lane, siblings, here, live }: LaneProps) {
                 <a
                   class="lk"
                   href={route.url}
-                  title={route.url}
+                  title={routeTitle(route)}
                   onClick={(event) => {
                     event.preventDefault();
                     bridge.open(route.url);
                   }}
                 >
-                  {URL.canParse(route.url) ? new URL(route.url).host : route.host}
+                  {new URL(route.url).host}
                 </a>
               ) : (
                 <span class="wild" title="A wildcard host, which has no single page to open">
                   {route.host}
                 </span>
               )}
-              <span class="ter">{route.service}</span>
+              <span class="sec">{route.service}</span>
               {route.state !== 'ready' && (
                 <span class={wordClass(route.state)}>{words(route.state)}</span>
               )}
@@ -226,8 +194,8 @@ export function LaneItem({ bridge, lane, siblings, here, live }: LaneProps) {
           </div>
         </div>
       )}
-      {picker && (
-        <fieldset class="picker" aria-label={`Machine that serves ${lane.ref}`}>
+      {many && (
+        <fieldset ref={picker} class="picker" aria-label={`Machine that serves ${lane.ref}`}>
           <span class="label">Served by</span>
           {lane.sources.map((each) => (
             <button
@@ -253,7 +221,7 @@ export function LaneItem({ bridge, lane, siblings, here, live }: LaneProps) {
           lane={lane}
           live={live}
           onSend={send}
-          onClose={() => setFlow(undefined)}
+          onClose={close}
         />
       )}
     </li>
@@ -272,17 +240,26 @@ interface FlowProps {
 
 /** The state of a switch: progress, the stop question, commands to run, or the answer. */
 function FlowView({ bridge, flow, lane, live, onSend, onClose }: FlowProps) {
+  const panel = useRef<HTMLDivElement>(null);
+  const asks = flow.kind === 'confirm' || flow.kind === 'commands';
+  // A panel that asks for a decision takes the focus, so keyboard users land on it.
+  useEffect(() => {
+    if (asks) {
+      panel.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    }
+  }, [flow.kind, asks]);
+
   switch (flow.kind) {
     case 'busy':
       return (
         <div class="flow" role="status">
-          <span class="st busy" aria-hidden="true" />
+          <Shape state="starting" />
           <p>{flow.text}</p>
         </div>
       );
     case 'confirm':
       return (
-        <div class="flow ask" role="alert">
+        <div ref={panel} class="flow ask" role="alert">
           <p>{`${flow.localLane} runs on this machine. Stop it and switch?`}</p>
           <div class="acts">
             <button type="button" class="btn" onClick={onClose}>
@@ -301,7 +278,7 @@ function FlowView({ bridge, flow, lane, live, onSend, onClose }: FlowProps) {
       );
     case 'commands':
       return (
-        <div class="flow ask" role="alert">
+        <div ref={panel} class="flow ask" role="alert">
           <p>{flow.text}</p>
           <ul class="cmds" aria-label={`Commands that free the ports of ${lane.ref}`}>
             {flow.commands.map((command) => (
@@ -328,7 +305,7 @@ function FlowView({ bridge, flow, lane, live, onSend, onClose }: FlowProps) {
       return (
         <div class={`flow ${flow.kind}`} role="status">
           <p>{flow.text}</p>
-          <button type="button" class="x" aria-label="Dismiss" onClick={onClose}>
+          <button type="button" class="x" aria-label="Dismiss message" onClick={onClose}>
             <Cross />
           </button>
         </div>

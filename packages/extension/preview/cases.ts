@@ -15,6 +15,8 @@ export interface Case {
   answer?: (method: UseMethod) => UseReply;
   /** What the screenshot clicks first, by accessible name. */
   clicks?: string[];
+  /** The button the screenshot gives keyboard focus last, by accessible name. */
+  focus?: string;
 }
 
 /** A ready route of `service` on `host`. */
@@ -118,8 +120,9 @@ const BOXES_VIEW: View = {
           sources: [{ box: 'fork-b', state: 'starting', branch: null, serving: true }],
           routes: [route('app.acme1.localhost', 'web', 'starting')]
         }),
+        // This machine yielded acme@2 to fork-c, whose link is down, so nothing serves it.
         lane('acme', 2, {
-          sources: [{ box: 'fork-a', state: 'running', branch: null, serving: false }],
+          sources: [local('idle', 'fix/login', false)],
           routes: []
         })
       ]
@@ -197,6 +200,20 @@ export const CASES: Case[] = [
     page: 'https://app.acme.localhost/'
   },
   {
+    name: 'focus-chip',
+    title: 'Keyboard focus on a lane to open the page in',
+    snapshot: { status: running, devlanes: '0.15.0', view: BOXES_VIEW, notices: [] },
+    page: 'https://app.acme.localhost/',
+    focus: 'acme@1'
+  },
+  {
+    name: 'focus-picker',
+    title: 'Keyboard focus on a box to switch to',
+    snapshot: { status: running, devlanes: '0.15.0', view: BOXES_VIEW, notices: [] },
+    page: 'https://app.acme.localhost/',
+    focus: 'fork-b'
+  },
+  {
     name: 'refusal',
     title: 'Switching a lane that runs here',
     snapshot: { status: running, devlanes: '0.15.0', view: RUNNING_HERE, notices: [] },
@@ -245,8 +262,7 @@ export const CASES: Case[] = [
     snapshot: {
       status: {
         state: 'outdated',
-        message:
-          'The devlanes daemon is older than this host. Restart the daemon with devlanes daemon restart.'
+        message: 'Restart the daemon with devlanes daemon restart.'
       },
       devlanes: '0.15.0',
       notices: []

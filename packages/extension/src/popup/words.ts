@@ -36,8 +36,6 @@ export function wordClass(state: string): string {
       return 'danger';
     case 'warn':
       return 'warn';
-    case 'idle':
-      return 'ter';
     default:
       return 'sec';
   }
@@ -48,19 +46,22 @@ export function words(state: string): string {
   return state.replace(/[_-]/g, ' ');
 }
 
-/** Why the daemon doesn't mirror a box's lane, for the box button's tooltip. */
+/**
+ * Why the daemon doesn't mirror a box's lane, for the box button's tooltip, in the
+ * TUI's words for a skipped lane: mirrored and chosen.
+ */
 export function skipWords(cause: string): string {
   switch (cause) {
     case 'local_running':
-      return 'Not used, because the lane runs on this machine.';
+      return 'Not mirrored here. The lane runs on this machine.';
     case 'local_stopped':
-      return 'Not used, because the stopped lane on this machine keeps its hostnames.';
+      return 'Not mirrored here. The stopped lane on this machine keeps its hostnames.';
     case 'box_chosen':
-      return 'Not used, because another box was chosen for the lane.';
+      return 'Not mirrored here. Another box is chosen for the lane.';
     case 'box_earlier':
-      return 'Not used, because a box that connected earlier serves the lane.';
+      return 'Not mirrored here. A box that connected earlier serves the lane.';
     default:
-      return `Not used (${words(cause)}).`;
+      return `Not mirrored here (${words(cause)}).`;
   }
 }
 
