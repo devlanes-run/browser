@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import {
   type BrowserContext,
   type CDPSession,
@@ -10,6 +11,12 @@ import {
 export interface ExtensionScope {
   evaluate<R>(fn: () => R | Promise<R>): Promise<R>;
 }
+
+/**
+ * How long one command to the popup may take. Polls retry within the expect
+ * timeout, so this only ends a command whose answer was lost.
+ */
+const COMMAND_TIMEOUT = 5_000;
 
 /** The JSON answer of a CDP command sent to the popup. */
 interface Answer {
@@ -32,7 +39,12 @@ export class Popup {
   #session: string;
   #target: string;
   #nextId = 1;
-  #waiting = new Map<number, (answer: Answer) => void>();
+  #waiting = new Map<
+    number,
+    { resolve: (answer: Answer) => void; reject: (error: Error) => void }
+  >();
+  /** Why the popup's session ended, once it has. */
+  #gone: Error | undefined;
 
   /**
    * @param cdp A CDP session of a page in the same browser.
@@ -48,9 +60,48 @@ export class Popup {
         return;
       }
       const answer = JSON.parse(event.message) as Answer;
-      this.#waiting.get(answer.id)?.(answer);
+      this.#waiting.get(answer.id)?.resolve(answer);
       this.#waiting.delete(answer.id);
     });
+    // A popup that closes or crashes never answers, so every command waiting on it fails.
+    cdp.on('Target.detachedFromTarget', (event) => {
+      if (event.sessionId !== this.#session) {
+        return;
+      }
+      this.#gone = new Error('The popup closed before it answered.');
+      for (const { reject } of this.#waiting.values()) {
+        reject(this.#gone);
+      }
+      this.#waiting.clear();
+    });
+  }
+
+  /**
+   * Sends one CDP command to the popup and waits for its answer, for at most
+   * {@link COMMAND_TIMEOUT} milliseconds.
+   */
+  async #command(method: string, params: Record<string, unknown>): Promise<Answer> {
+    if (this.#gone) {
+      throw this.#gone;
+    }
+    const id = this.#nextId++;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const answered = new Promise<Answer>((resolve, reject) => {
+      this.#waiting.set(id, { resolve, reject });
+      timer = setTimeout(() => {
+        this.#waiting.delete(id);
+        reject(new Error(`The popup didn't answer ${method} within ${COMMAND_TIMEOUT} ms.`));
+      }, COMMAND_TIMEOUT);
+    });
+    try {
+      await this.#cdp.send('Target.sendMessageToTarget', {
+        sessionId: this.#session,
+        message: JSON.stringify({ id, method, params })
+      });
+      return await answered;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /**
@@ -101,21 +152,11 @@ export class Popup {
    * source, so it can't use anything from the test's scope.
    */
   async evaluate<R, A = undefined>(fn: (arg: A) => R | Promise<R>, arg?: A): Promise<R> {
-    const id = this.#nextId++;
-    const answered = new Promise<Answer>((resolve) => this.#waiting.set(id, resolve));
-    await this.#cdp.send('Target.sendMessageToTarget', {
-      sessionId: this.#session,
-      message: JSON.stringify({
-        id,
-        method: 'Runtime.evaluate',
-        params: {
-          expression: `(${fn.toString()})(${JSON.stringify(arg ?? null)})`,
-          returnByValue: true,
-          awaitPromise: true
-        }
-      })
+    const answer = await this.#command('Runtime.evaluate', {
+      expression: `(${fn.toString()})(${JSON.stringify(arg ?? null)})`,
+      returnByValue: true,
+      awaitPromise: true
     });
-    const answer = await answered;
     const thrown = answer.result?.exceptionDetails;
     if (answer.error || thrown) {
       throw new Error(
@@ -203,6 +244,16 @@ export class Popup {
     return this.evaluate(
       () => performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? Number.NaN
     );
+  }
+
+  /** Saves a PNG of the popup at `path`. */
+  async screenshot(path: string): Promise<void> {
+    const answer = await this.#command('Page.captureScreenshot', { format: 'png' });
+    const data = (answer.result as { data?: string } | undefined)?.data;
+    if (!data) {
+      throw new Error(answer.error?.message ?? 'The popup gave no screenshot.');
+    }
+    writeFileSync(path, Buffer.from(data, 'base64'));
   }
 
   /** Closes the popup, as a click outside it would. */
