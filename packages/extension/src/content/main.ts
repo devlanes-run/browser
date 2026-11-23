@@ -6,9 +6,12 @@ import { type ContentRequest, parseSettings, type Settings, type SettingsChanged
 import { type Candidate, fillable, loginFields, opensMenu, readable, submitted } from './fields';
 import { LoginMenu } from './menu';
 
-/** The settings while the frame is on a lane, `null` when it isn't, `undefined` until the background answers. */
+/**
+ * The settings while the frame is on a lane, `null` when it isn't, and `undefined`
+ * until the background knows, which is also while it has no view from devlanes.
+ */
 let settings: Settings | null | undefined;
-let asking: Promise<Settings | null> | undefined;
+let asking: Promise<Settings | null | undefined> | undefined;
 let menu: LoginMenu | undefined;
 /** The field whose menu is waiting for the background. */
 let opening: HTMLInputElement | undefined;
@@ -25,12 +28,12 @@ async function ask<T>(request: ContentRequest): Promise<T | null> {
 }
 
 /**
- * Asks the background whether this frame is on a lane. A page that loaded
- * before devlanes sent its view asks again on the next sign-in field it focuses.
+ * Asks the background whether this frame is on a lane. When the background had
+ * no view yet, the answer stays unknown and the frame asks again later.
  */
-function checkLane(): Promise<Settings | null> {
-  asking ??= ask<Settings>({ type: 'login:lane' }).then((answer) => {
-    settings = answer && parseSettings(answer);
+function checkLane(): Promise<Settings | null | undefined> {
+  asking ??= ask<Settings | 'no-view'>({ type: 'login:lane' }).then((answer) => {
+    settings = answer === 'no-view' ? undefined : answer && parseSettings(answer);
     asking = undefined;
     return settings;
   });
@@ -122,7 +125,7 @@ async function openMenu(field: HTMLInputElement): Promise<void> {
   opening = field;
   let token: string | null = null;
   try {
-    const current = settings ?? (await checkLane());
+    const current = settings === undefined ? await checkLane() : settings;
     token = current?.fill ? await ask<string>({ type: 'login:menu' }) : null;
   } finally {
     opening = undefined;
@@ -213,12 +216,13 @@ document.addEventListener(
 );
 
 /**
- * Asks about the lane again on the first input from a person, when the first
- * answer came before devlanes sent its view. A form sent right after needs the
- * answer already, since `submit` can't wait for it.
+ * Asks about the lane again on input from a person while the background had no
+ * view to answer from. A form sent right after needs the answer already, since
+ * `submit` can't wait for it. A definite "not a lane" is never asked again, so
+ * typing on other `*.localhost` pages doesn't wake the service worker.
  */
 function recheckLane(event: Event): void {
-  if (event.isTrusted && settings === null) {
+  if (event.isTrusted && settings === undefined) {
     checkLane();
   }
 }

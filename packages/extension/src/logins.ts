@@ -131,7 +131,10 @@ export function listed(records: LoginRecord[]): Listed[] {
 
 /** What a content script asks the background. The background reads the page from the sender. */
 export type ContentRequest =
-  /** Answered with {@link Settings} when the frame is on a lane route, else `null`. */
+  /**
+   * Answered with {@link Settings} when the frame is on a lane route, `'no-view'`
+   * while the background has no view from devlanes yet, else `null`.
+   */
   | { type: 'login:lane' }
   /** Answered with a menu token when the menu has logins to show, else `null`. */
   | { type: 'login:menu' }

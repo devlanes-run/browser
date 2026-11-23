@@ -129,9 +129,16 @@ export class Logins {
     return true;
   }
 
-  /** The settings for a frame on a lane, or `null` for any other frame. */
-  async #lane(sender: Sender): Promise<Settings | null> {
-    return (await this.#place(sender)) ? this.#settings() : null;
+  /**
+   * The settings for a frame on a lane, `null` for any other frame, or `'no-view'`
+   * while the background has no view from devlanes to tell.
+   */
+  async #lane(sender: Sender): Promise<Settings | null | 'no-view'> {
+    if (await this.#place(sender)) {
+      return this.#settings();
+    }
+    // Without a view, no hostname is known yet, and the frame asks again later.
+    return (await this.#deps.view()) ? null : 'no-view';
   }
 
   /** A token for the menu frame when there are logins to offer, else `null`. */

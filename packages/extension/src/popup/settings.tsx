@@ -57,27 +57,31 @@ function DeleteButton({ bridge, project, count }: DeleteProps) {
     return () => clearTimeout(timer);
   }, [armed]);
   const logins = count === 1 ? '1 login' : `${count} logins`;
-  const label = armed
-    ? count === 1
-      ? `Delete the saved login of ${project}`
-      : `Delete the ${count} saved logins of ${project}`
-    : `Delete the saved logins of ${project}`;
+  const what =
+    count === 1 ? `the saved login of ${project}` : `the ${count} saved logins of ${project}`;
+  const label = armed ? `Delete ${what}` : `Delete the saved logins of ${project}`;
   return (
-    <button
-      type="button"
-      class={`btn${armed ? ' armed' : ''}`}
-      aria-label={label}
-      onBlur={() => setArmed(false)}
-      onClick={() => {
-        if (!armed) {
-          setArmed(true);
-          return;
-        }
-        bridge.forgetLogins(project).catch((error) => console.error(error));
-      }}
-    >
-      {armed ? `Delete ${logins}` : 'Delete'}
-    </button>
+    <>
+      <button
+        type="button"
+        class={`btn${armed ? ' armed' : ''}`}
+        aria-label={label}
+        onBlur={() => setArmed(false)}
+        onClick={() => {
+          if (!armed) {
+            setArmed(true);
+            return;
+          }
+          bridge.forgetLogins(project).catch((error) => console.error(error));
+        }}
+      >
+        {armed ? `Delete ${logins}` : 'Delete'}
+      </button>
+      {/* The button keeps the focus, so screen readers hear the second step from here. */}
+      <span class="hidden" aria-live="polite">
+        {armed ? `Press again to delete ${what}.` : ''}
+      </span>
+    </>
   );
 }
 
@@ -117,7 +121,7 @@ export function LoginSettings({ bridge }: { bridge: Bridge }) {
           Saves the username and password when you sign in on a lane.
           {!settings.remember &&
             saved.length > 0 &&
-            ' Turning this off keeps the logins already saved. Delete them below.'}
+            ' The logins already saved stay. Delete them below.'}
         </p>
         <p id="remember-warn" class="warn">
           Passwords are stored unencrypted in this browser. Use this for test accounts only.

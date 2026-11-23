@@ -40,14 +40,14 @@ function menuFrame(tab = 1): Sender {
   return { id: ID, url: 'chrome-extension://1b2c3d4e-0000/menu.html', tab: { id: tab } };
 }
 
-/** A background over an in-memory store, with a clock the test moves. */
-function setup() {
+/** A background over an in-memory store, with a clock the test moves and `view` from the host, `null` for none yet. */
+function setup(view: View | null = VIEW) {
   const store = new Map<string, unknown>();
   const clock = { now: 1_000 };
   let tokens = 0;
   const logins = new Logins({
     extensionId: ID,
-    view: () => Promise.resolve(VIEW),
+    view: () => Promise.resolve(view ?? undefined),
     store: {
       get: (key) => Promise.resolve(structuredClone(store.get(key))),
       set: (key, value) => {
@@ -103,6 +103,12 @@ describe('Logins', () => {
       fill: true,
       remember: true
     });
+  });
+
+  it('tells a frame to ask again only while it has no view', async () => {
+    const lane = { type: 'login:lane' };
+    assert.equal(await setup(null).ask(lane, page(ACME0)), 'no-view');
+    assert.equal(await setup().ask(lane, page('https://other.localhost')), null);
   });
 
   it('follows the settings', async () => {
