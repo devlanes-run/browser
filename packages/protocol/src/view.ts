@@ -52,7 +52,7 @@ export interface Source {
 export interface Route {
   /** The hostname, or a wildcard such as `*.app.acme.localhost` that matches every name below it. */
   host: string;
-  /** The URL that opens the route, `null` for a wildcard host, which has no single page. */
+  /** The URL that opens the route. It is `null` for a wildcard host, which has no single page. */
   url: string | null;
   service: string;
   state: string;

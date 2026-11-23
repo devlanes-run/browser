@@ -2,7 +2,7 @@
 
 import type { Lane, Route, Source, View } from '@devlanes/protocol';
 
-/** A ready route of `service` on `host`. A wildcard host has no URL, as the host sends it. */
+/** A ready route of `service` on `host`. The native host sends a wildcard route with no URL. */
 export function route(host: string, service: string): Route {
   return { host, url: host.startsWith('*.') ? null : `https://${host}`, service, state: 'ready' };
 }

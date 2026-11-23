@@ -70,7 +70,7 @@ export const MENU_CASES: MenuCase[] = [
   }
 ];
 
-/** A route of `service` on `host`. A wildcard host has no URL, as the host sends it. */
+/** A route of `service` on `host`. The native host sends a wildcard route with no URL. */
 function route(host: string, service: string, state = 'ready'): Route {
   return { host, url: host.startsWith('*.') ? null : `https://${host}`, service, state };
 }
