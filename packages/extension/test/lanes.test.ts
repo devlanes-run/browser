@@ -108,6 +108,19 @@ describe('pageIn', () => {
     const from = findRoute(VIEW, url.hostname);
     assert.ok(from);
     assert.equal(pageIn(from, url, target), undefined);
+
+    const wild = lane(6, [
+      {
+        host: '*.sites.acme6.localhost',
+        url: 'javascript:alert(1)',
+        service: 'sites',
+        state: 'ready'
+      }
+    ]);
+    const tenant = new URL('https://t1.sites.acme.localhost/about');
+    const fromTenant = findRoute(VIEW, tenant.hostname);
+    assert.ok(fromTenant);
+    assert.equal(pageIn(fromTenant, tenant, wild), undefined);
   });
 
   it('gives nothing for a lane that routes only wildcards for other services', () => {

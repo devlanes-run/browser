@@ -66,12 +66,21 @@ function parse(route: Route): URL | undefined {
   return URL.canParse(route.url) ? new URL(route.url) : undefined;
 }
 
+/** True when `url` is a web URL, the only kind the popup opens in a tab. */
+function isWeb(url: URL | undefined): boolean {
+  return url?.protocol === 'https:' || url?.protocol === 'http:';
+}
+
 /**
- * `route.url` with `hostname` in place of its host, keeping its scheme and port.
- * A wildcard route's URL may hold the `*` or be no URL at all, so HTTPS is the fallback.
+ * `route.url` with `hostname` in place of its host, keeping its scheme and port,
+ * or `undefined` when that isn't a web URL. A wildcard route's URL may hold the
+ * `*` or be no URL at all, so HTTPS is the fallback.
  */
-function withHost(route: Route, hostname: string): URL {
+function withHost(route: Route, hostname: string): URL | undefined {
   const url = parse(route) ?? new URL('https://localhost');
+  if (!isWeb(url)) {
+    return undefined;
+  }
   url.hostname = hostname;
   return url;
 }
@@ -121,11 +130,7 @@ export function pageIn(from: RouteAt, page: URL, target: Lane): string | undefin
  * in tabs, so a URL the host sent with another scheme never reaches `tabs.create`.
  */
 export function openable(route: Route): boolean {
-  const url = parse(route);
-  return (
-    wildcardBase(route.host) === undefined &&
-    (url?.protocol === 'https:' || url?.protocol === 'http:')
-  );
+  return wildcardBase(route.host) === undefined && isWeb(parse(route));
 }
 
 /** The first route of `lane` a browser can open. */
