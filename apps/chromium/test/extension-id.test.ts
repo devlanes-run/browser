@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { it } from 'node:test';
-import { extensionId } from '../extension-id.ts';
-import { manifest } from '../manifest.ts';
+import { extensionId } from '../extension-id';
+import { manifest } from '../manifest';
 
 it('gives the extension the id the devlanes native host allows', () => {
   // The id in the host's `allowed_origins`. Changing the key breaks the connection to devlanes.

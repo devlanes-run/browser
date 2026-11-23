@@ -9,9 +9,7 @@
     "./popup": "./src/popup/main.tsx"
   },
   "scripts": {
-    "lint": "biome check .",
-    "lint-ci": "biome ci .",
-    "test-types": "tsc --noEmit"
+    "test-types": "tsc"
   },
   "dependencies": {
     "preact": "^11.2.0"

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig } from '@rsbuild/core';
 import { pluginPreact } from '@rsbuild/plugin-preact';
+// rsbuild loads this file with Node's own TypeScript support, which needs the `.ts` extension.
 import { manifest } from './manifest.ts';
 import { pluginManifest } from './manifest-plugin.ts';
 

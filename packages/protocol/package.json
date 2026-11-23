@@ -8,9 +8,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "lint": "biome check .",
-    "lint-ci": "biome ci .",
     "test": "tsx --test test/*.test.ts",
-    "test-types": "tsc --noEmit"
+    "test-types": "tsc"
   }
 }

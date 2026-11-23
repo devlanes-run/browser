@@ -14,6 +14,17 @@ function filesOf(manifest: chrome.runtime.ManifestV3): Set<string> {
   if (manifest.background) {
     files.add(manifest.background.service_worker);
   }
+  for (const script of manifest.content_scripts ?? []) {
+    for (const file of [...(script.js ?? []), ...(script.css ?? [])]) {
+      files.add(file);
+    }
+  }
+  for (const entry of manifest.web_accessible_resources ?? []) {
+    // A pattern such as `icons/*` may match nothing yet, so only plain paths are checked.
+    for (const file of entry.resources.filter((resource) => !resource.includes('*'))) {
+      files.add(file);
+    }
+  }
   return files;
 }
 
@@ -25,6 +36,7 @@ function filesOf(manifest: chrome.runtime.ManifestV3): Set<string> {
 export function pluginManifest(manifest: chrome.runtime.ManifestV3): RsbuildPlugin {
   return {
     name: 'devlanes:manifest',
+    /** Checks the files `manifest` names, then emits it once rsbuild has emitted everything else. */
     setup(api) {
       // rsbuild copies `public/` outside the compilation, so those files are looked up on disk.
       const publicDir = join(api.context.rootPath, 'public');
