@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { Lane, Route, View } from '@devlanes/protocol';
-import { findRoute, pageIn } from '../src/lanes';
+import { badgeFor, findRoute, pageIn } from '../src/lanes';
 
 /** A route of `service` on `host`, served over HTTPS on the proxy's default port. */
 function route(host: string, service: string): Route {
@@ -41,6 +41,8 @@ describe('findRoute', () => {
   for (const [hostname, ref, host] of [
     ['app.acme.localhost', 'acme@0', 'app.acme.localhost'],
     ['APP.acme.localhost', 'acme@0', 'app.acme.localhost'],
+    ['app.acme.localhost.', 'acme@0', 'app.acme.localhost'],
+    ['t1.sites.acme.localhost.', 'acme@0', '*.sites.acme.localhost'],
     ['t1.sites.acme.localhost', 'acme@0', '*.sites.acme.localhost'],
     ['other.acme.localhost', 'acme@0', '*.acme.localhost'],
     ['app.acme1.localhost', 'acme@1', 'app.acme1.localhost']
@@ -69,6 +71,7 @@ describe('pageIn', () => {
     ['https://admin.acme.localhost/users', LANE1, 'https://admin.acme1.localhost/users'],
     ['https://t1.sites.acme.localhost/about', LANE1, 'https://t1.sites.acme1.localhost/about'],
     ['https://a.b.acme.localhost/x', LANE1, 'https://a.b.acme1.localhost/x'],
+    ['https://t1.sites.acme.localhost./about', LANE1, 'https://t1.sites.acme1.localhost/about'],
     // acme@1 has no api route, so the page opens on its first route, at that route's own path.
     ['https://api.acme.localhost/v1/orders', LANE1, 'https://app.acme1.localhost'],
     ['https://app.acme1.localhost/orders', MAIN, 'https://app.acme.localhost/orders'],
@@ -97,11 +100,53 @@ describe('pageIn', () => {
     assert.equal(pageIn(from, url, target), 'https://app.acme3.localhost:8443/a?b=1');
   });
 
+  it('never opens a route whose URL is not a web URL', () => {
+    const target = lane(5, [
+      { host: 'app.acme5.localhost', url: 'javascript:alert(1)', service: 'web', state: 'ready' }
+    ]);
+    const url = new URL('https://app.acme.localhost/a');
+    const from = findRoute(VIEW, url.hostname);
+    assert.ok(from);
+    assert.equal(pageIn(from, url, target), undefined);
+  });
+
   it('gives nothing for a lane that routes only wildcards for other services', () => {
     const target = lane(4, [route('*.acme4.localhost', 'gateway')]);
     const url = new URL('https://app.acme.localhost/a');
     const from = findRoute(VIEW, url.hostname);
     assert.ok(from);
     assert.equal(pageIn(from, url, target), undefined);
+  });
+});
+
+describe('badgeFor', () => {
+  /** A one-lane view where `served_by` is set as given, or left out for `'missing'`. */
+  function servedBy(by: string | null | 'missing'): View {
+    const shaped = lane(2, [route('app.acme2.localhost', 'web')]);
+    if (by === 'missing') {
+      delete shaped.served_by;
+    } else {
+      shaped.served_by = by;
+    }
+    return { boxes: [], projects: [{ name: 'acme', lanes: [shaped] }] };
+  }
+
+  for (const [by, text, title, box] of [
+    [null, '2', 'acme@2 lane2, served by this machine', undefined],
+    ['fork-a', '2\u2022', 'acme@2 lane2, served by fork-a', 'fork-a'],
+    ['missing', '2', 'acme@2 lane2. Nothing serves it.', undefined]
+  ] as const) {
+    it(`marks a lane served by ${by}`, () => {
+      assert.deepEqual(badgeFor(servedBy(by), 'https://app.acme2.localhost/cart'), {
+        text,
+        title,
+        box
+      });
+    });
+  }
+
+  it('shows nothing for a tab no lane routes', () => {
+    assert.equal(badgeFor(servedBy(null), 'https://shop.localhost/'), undefined);
+    assert.equal(badgeFor(servedBy(null), 'chrome://newtab/'), undefined);
   });
 });

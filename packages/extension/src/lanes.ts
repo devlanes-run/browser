@@ -19,12 +19,20 @@ function routes(route: Route, hostname: string): boolean {
 }
 
 /**
+ * `hostname` as routes write it: lower case, without the trailing dot of a fully
+ * qualified name such as `app.acme.localhost.`, which reaches the same proxy.
+ */
+function normalHost(hostname: string): string {
+  return hostname.toLowerCase().replace(/\.$/, '');
+}
+
+/**
  * Finds the lane whose routes hold `hostname`. An exact host wins over a wildcard,
  * and a longer wildcard over a shorter one, so a tenant wildcard beats a fallback
  * under the lane's domain.
  */
 export function findRoute(view: View, hostname: string): RouteAt | undefined {
-  const name = hostname.toLowerCase();
+  const name = normalHost(hostname);
   let best: RouteAt | undefined;
   let bestRank = -1;
   for (const project of view.projects) {
@@ -88,7 +96,7 @@ export function pageIn(from: RouteAt, page: URL, target: Lane): string | undefin
     );
     const targetBase = route && wildcardBase(route.host);
     if (route && targetBase !== undefined) {
-      const labels = page.hostname.slice(0, -base.length - 1);
+      const labels = normalHost(page.hostname).slice(0, -base.length - 1);
       url = withHost(route, `${labels}.${targetBase}`);
     }
   }
@@ -97,7 +105,7 @@ export function pageIn(from: RouteAt, page: URL, target: Lane): string | undefin
     const index =
       base === undefined ? serviceRoutes(from.lane, service, false).indexOf(from.route) : 0;
     const route = exact[Math.max(0, index)] ?? exact[0];
-    url = route && parse(route);
+    url = route && openable(route) ? parse(route) : undefined;
   }
   if (!url) {
     return firstRoute(target)?.url;
@@ -108,9 +116,16 @@ export function pageIn(from: RouteAt, page: URL, target: Lane): string | undefin
   return url.href;
 }
 
-/** True when `route` has a single host a browser can open. */
+/**
+ * True when `route` has a single host and a web URL. The popup opens route URLs
+ * in tabs, so a URL the host sent with another scheme never reaches `tabs.create`.
+ */
 export function openable(route: Route): boolean {
-  return wildcardBase(route.host) === undefined;
+  const url = parse(route);
+  return (
+    wildcardBase(route.host) === undefined &&
+    (url?.protocol === 'https:' || url?.protocol === 'http:')
+  );
 }
 
 /** The first route of `lane` a browser can open. */
@@ -152,11 +167,16 @@ export function badgeFor(view: View | undefined, url: string | undefined): Badge
   }
   const { lane } = at;
   const box = lane.served_by ?? undefined;
-  const from = box === undefined ? 'this machine' : box;
+  let title: string;
+  if (lane.served_by === undefined) {
+    title = `${lane.ref} ${lane.name}. Nothing serves it.`;
+  } else {
+    title = `${lane.ref} ${lane.name}, served by ${lane.served_by ?? 'this machine'}`;
+  }
   return {
     // A badge fits about four characters, so the mark is a single dot.
     text: box === undefined ? `${lane.index}` : `${lane.index}\u2022`,
-    title: `${lane.ref} (${lane.name}) from ${from}`,
+    title,
     box
   };
 }
