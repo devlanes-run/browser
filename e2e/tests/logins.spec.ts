@@ -258,7 +258,7 @@ test('"Remember passwords" off saves nothing, and "Fill logins on lanes" off ope
   expect(sent.filter((each) => each.type === 'login:menu')).toEqual([]);
   // Bob's submit came before carol's, so a save of bob's login would be done by now.
   expect(JSON.stringify(await lab.stored('logins:acme'))).not.toContain('bob@');
-  // Bob's page never asked to save, so the background didn't refuse it in his place.
+  // Bob's page never sent a save, so his missing login isn't the background refusing one.
   expect(
     (await messages(lab)).filter(
       (each) => each.type === 'login:save' && each.username === 'bob@example.invalid'
