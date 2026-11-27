@@ -19,6 +19,7 @@ const STATUS: Record<Status['state'], { word: string; shape: ShapeName }> = {
   daemon_stopped: { word: 'Daemon stopped', shape: 'idle' },
   outdated: { word: 'Daemon outdated', shape: 'warn' },
   not_installed: { word: 'Not set up', shape: 'warn' },
+  not_allowed: { word: 'Not allowed', shape: 'warn' },
   protocol_mismatch: { word: 'Incompatible', shape: 'fail' },
   host_failed: { word: 'Not connected', shape: 'fail' }
 };
@@ -56,6 +57,13 @@ function StatusLine({ status, bridge }: { status: Status; bridge: Bridge }) {
         <p class="line warn">
           devlanes isn't set up for this browser. Run <Cmd>devlanes setup</Cmd>, then reopen this
           popup.
+        </p>
+      );
+    case 'not_allowed':
+      return (
+        <p class="line warn">
+          This devlanes doesn't allow this extension yet. Update devlanes, run{' '}
+          <Cmd>devlanes setup</Cmd>, then reopen this popup.
         </p>
       );
     case 'protocol_mismatch':

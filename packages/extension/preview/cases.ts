@@ -308,6 +308,11 @@ export const CASES: Case[] = [
     snapshot: { status: { state: 'not_installed' }, notices: [] }
   },
   {
+    name: 'not-allowed',
+    title: "Host doesn't allow this extension",
+    snapshot: { status: { state: 'not_allowed' }, notices: [] }
+  },
+  {
     name: 'outdated',
     title: 'Daemon outdated',
     snapshot: {

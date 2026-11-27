@@ -15,7 +15,10 @@ import type { View } from '@devlanes/protocol';
 import { expect } from '@playwright/test';
 
 /** The extension's fixed id, from the `key` in its manifest. */
-export const EXTENSION_ID = 'pggffblellmckocpflaaeligadjpkahj';
+export const EXTENSION_ID = 'konofbnhgejkgkonkleipkkpkphbfgee';
+
+/** An id that isn't this extension's, for a host that allows another extension only. */
+const OTHER_EXTENSION_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 /** The native messaging host name the extension connects to. */
 const HOST_NAME = 'run.devlanes.browser';
@@ -74,8 +77,10 @@ export class FakeHost {
   /**
    * @param dir The test's folder, which holds the scenario and the logs.
    * @param scenario What the host answers.
+   * @param allowed False lists another extension in the manifest instead of this
+   *   one, as a devlanes from before the store id does.
    */
-  constructor(dir: string, scenario: Scenario) {
+  constructor(dir: string, scenario: Scenario, allowed = true) {
     this.dir = dir;
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'scenario.json'), JSON.stringify(scenario));
@@ -87,7 +92,7 @@ export class FakeHost {
         description: 'The fake devlanes host of the end-to-end tests',
         path: this.#launcher(),
         type: 'stdio',
-        allowed_origins: [`chrome-extension://${EXTENSION_ID}/`]
+        allowed_origins: [`chrome-extension://${allowed ? EXTENSION_ID : OTHER_EXTENSION_ID}/`]
       })
     );
   }

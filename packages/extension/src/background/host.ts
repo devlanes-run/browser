@@ -41,6 +41,12 @@ const BACKOFF = [1, 2, 5, 10, 30];
  */
 const HOST_NOT_FOUND = 'Specified native messaging host not found.';
 
+/**
+ * Chrome's reason when the host's manifest doesn't list this extension in
+ * `allowed_origins`, as with a devlanes from before the store id.
+ */
+const HOST_FORBIDDEN = 'Access to the specified native messaging host is forbidden.';
+
 /** How many `lane_switched` notices the popup keeps. */
 const NOTICES = 5;
 
@@ -57,8 +63,9 @@ type Pending =
 /**
  * The port to the devlanes native host: `hello`, then `watch`, then the view and
  * the daemon state as they change. It reconnects with backoff after the host
- * goes away. It doesn't retry a missing host or a protocol mismatch, since only
- * a new install fixes those, and the popup asks again when it opens.
+ * goes away. It doesn't retry a missing host, a host that doesn't allow this
+ * extension or a protocol mismatch, since only a new install fixes those, and
+ * the popup asks again when it opens.
  */
 export class HostConnection {
   #deps: HostDeps;
@@ -244,6 +251,10 @@ export class HostConnection {
     this.#failPending();
     if (error === HOST_NOT_FOUND) {
       this.#setStatus({ state: 'not_installed' });
+      return;
+    }
+    if (error === HOST_FORBIDDEN) {
+      this.#setStatus({ state: 'not_allowed' });
       return;
     }
     this.#retryLater(error ?? 'The host closed the connection.');

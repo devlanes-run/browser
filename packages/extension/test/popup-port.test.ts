@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { it } from 'node:test';
 import { isPopupSender, type PortSender } from '../src/background/popup-port';
 
-const ID = 'pggffblellmckocpflaaeligadjpkahj';
+const ID = 'konofbnhgejkgkonkleipkkpkphbfgee';
 const POPUP: PortSender = { id: ID, url: `chrome-extension://${ID}/popup.html` };
 
 it('lets only the action popup of this extension open the popup port', () => {

@@ -101,6 +101,17 @@ describe('HostConnection', () => {
     assert.equal(host.snapshot.devlanes, '0.15.0');
   });
 
+  it('stops on a host that does not allow this extension, until asked again', () => {
+    const { host, ports, retries, state } = setup();
+    host.ensure();
+    ports[0]?.lose('Access to the specified native messaging host is forbidden.');
+    assert.equal(state(), 'not_allowed');
+    assert.equal(retries.length, 0);
+
+    host.ensure();
+    assert.equal(ports.length, 2);
+  });
+
   it('stops on a protocol mismatch and on a missing host, until asked again', () => {
     const { host, ports, retries, state } = setup();
     host.ensure();

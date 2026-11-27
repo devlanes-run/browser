@@ -4,7 +4,7 @@ TypeScript, a pnpm workspace, Node.js 24.16 or later. Shared packages live in `p
 
 - `packages/protocol` owns the types and parsers of the native host contract (protocol 1). The other side is `crates/browser-host` in devlanes-run/devlanes. A change to the contract lands in both repos.
 - `packages/extension` owns the background, popup and content code. It stays browser agnostic.
-- `apps/chromium` owns the manifest, the rsbuild config and the icons for Chrome, Chromium, Brave and Edge. The manifest's `key` fixes the extension id, which the devlanes host allows. Never change it.
+- `apps/chromium` owns the manifest, the rsbuild config and the icons for Chrome, Chromium, Brave and Edge. The manifest's `key` is the Chrome Web Store item's public key. It fixes the extension id, which the devlanes host allows. Never change it. `pnpm zip-store` makes the store upload, whose manifest has no `key`.
 - `e2e` owns the end-to-end tests of the built extension and the fake devlanes host they run against.
 - A new manifest permission needs a reason in the PR.
 
@@ -58,6 +58,7 @@ pnpm build
 pnpm test-types
 pnpm test
 pnpm zip
+pnpm zip-store
 pnpm e2e
 ```
 

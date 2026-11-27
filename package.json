@@ -21,7 +21,8 @@
     "lint-fix": "biome check --write --unsafe .",
     "test": "pnpm -r test",
     "test-types": "pnpm -r test-types",
-    "zip": "pnpm -r zip"
+    "zip": "pnpm -r zip",
+    "zip-store": "pnpm -r zip-store"
   },
   "devDependencies": {
     "@arthurfiorette/biomejs-config": "^2.0.1",

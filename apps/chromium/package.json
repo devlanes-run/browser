@@ -9,7 +9,8 @@
     "build": "rsbuild build",
     "test": "tsx --test test/*.test.ts",
     "test-types": "tsc",
-    "zip": "web-ext build --source-dir dist --artifacts-dir artifacts --overwrite-dest"
+    "zip": "web-ext build --source-dir dist --artifacts-dir artifacts --overwrite-dest",
+    "zip-store": "tsx store-copy.ts && web-ext build --source-dir artifacts/store --artifacts-dir artifacts --filename \"{name}-{version}-store.zip\" --overwrite-dest"
   },
   "dependencies": {
     "@devlanes/extension": "workspace:*"
