@@ -54,7 +54,7 @@ The extension needs devlanes 0.16.0 or later. Run `devlanes setup` to register d
 
 ## Chrome Web Store
 
-The extension id comes from the store listing, which isn't public yet. `pnpm zip-store` makes the zip to upload, `apps/chromium/artifacts/devlanes-<version>-store.zip`. Its manifest has no `key`, because the store refuses an upload that has one. The listing's privacy policy is at https://devlanes.run/privacy/.
+The extension id comes from the store listing, which isn't public yet. `pnpm zip-store` writes the zip to upload to `apps/chromium/artifacts/devlanes-<version>-store.zip`. Its manifest has no `key`, because the store refuses an upload that has one. The listing's privacy policy is https://devlanes.run/privacy/.
 
 ## Develop
 

@@ -3,8 +3,8 @@ import { LANE_URLS } from '@devlanes/extension/lane-urls';
 /**
  * The Chrome Web Store item's public key. It fixes the extension id at
  * `konofbnhgejkgkonkleipkkpkphbfgee`, the id the devlanes native host allows.
- * The store holds the private key and signs store installs with it, so an
- * unpacked build with this key gets the same id as a store install.
+ * The store holds the private key. Chrome derives the id from this public key,
+ * so an unpacked build gets the same id as a store install.
  */
 const KEY =
   'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy3aCwoO0etAdsbEmRXOQUEOON2NfoZD4sgOwIgQ4ZCNMgXXOtboRGyLPEGEJyIhamvmxUWrepof+oa7qrznBLRz2G/lNW5B+Fb+WDQt+pAlEnjOOCc2oGxxjYi+o7NOMIacFyOuOKa5SQkp189u301/+ML1pTL7m3mIfzD8caZEgU/CK4BAt5j0rh6yDahjbn/CsGwognSnNKBYe4R3TTk4mG51Zb7O2Qs+V+mTzNZ80rF2fV2DpAfvD8rWn6LuL1a5+/fPrFf9z+t/5ZCeiP5MeG2/j1Yz9u/V/tBI6p6m+ZSdFV7ktJKdMqwoPmVmdcmCcJHZ/i5UxfTI1zEGtfwIDAQAB';

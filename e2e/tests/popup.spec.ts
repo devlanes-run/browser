@@ -181,7 +181,7 @@ test("the popup says when the host doesn't allow this extension", async ({ launc
   const lab = await launch({ allowed: false });
   const popup = await lab.popup(await lab.open('https://app.acme.localhost/'));
   // This text only shows after Chrome refused the host, so the host never started.
-  await popup.waitForText("This devlanes doesn't allow this extension yet.");
+  await popup.waitForText("This version of devlanes doesn't allow this extension.");
   await popup.waitForText('Not allowed');
   expect(lab.host.requests()).toEqual([]);
 });

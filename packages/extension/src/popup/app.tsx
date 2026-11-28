@@ -62,7 +62,7 @@ function StatusLine({ status, bridge }: { status: Status; bridge: Bridge }) {
     case 'not_allowed':
       return (
         <p class="line warn">
-          This devlanes doesn't allow this extension yet. Update devlanes, run{' '}
+          This version of devlanes doesn't allow this extension. Update devlanes, run{' '}
           <Cmd>devlanes setup</Cmd>, then reopen this popup.
         </p>
       );
