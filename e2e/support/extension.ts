@@ -25,6 +25,8 @@ export interface LaunchOptions {
   scenario?: Scenario;
   /** False runs without any registered host, as before `devlanes setup`. */
   installed?: boolean;
+  /** False registers a host whose manifest doesn't list this extension. */
+  allowed?: boolean;
 }
 
 /** The badge of a tab: its text and its background colour as RGBA. */
@@ -70,7 +72,7 @@ export const test = base.extend<{ launch: (options?: LaunchOptions) => Promise<L
     }
     const cleanups: (() => Promise<void> | void)[] = [];
     const launched: Launched[] = [];
-    await use(async ({ scenario = {}, installed = true } = {}) => {
+    await use(async ({ scenario = {}, installed = true, allowed = true } = {}) => {
       const folder = mkdtempSync(join(tmpdir(), TEST_FOLDER_PREFIX));
       cleanups.push(() => {
         try {
@@ -80,7 +82,7 @@ export const test = base.extend<{ launch: (options?: LaunchOptions) => Promise<L
           // moment. A folder left in the temp directory is harmless, so that isn't an error.
         }
       });
-      const host = new FakeHost(join(folder, 'host'), scenario);
+      const host = new FakeHost(join(folder, 'host'), scenario, allowed);
       const profile = join(folder, 'profile');
       host.register(profile, installed);
       cleanups.push(() => host.unregister());

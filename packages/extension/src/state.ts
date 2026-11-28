@@ -10,6 +10,7 @@ export type Status =
   | { state: 'daemon_stopped'; message?: string }
   | { state: 'outdated'; message?: string }
   | { state: 'not_installed' }
+  | { state: 'not_allowed' }
   | { state: 'protocol_mismatch'; supported: number[] }
   | { state: 'host_failed'; detail: string };
 

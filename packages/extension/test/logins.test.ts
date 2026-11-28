@@ -4,7 +4,7 @@ import type { Lane, View } from '@devlanes/protocol';
 import { Logins, type Sender } from '../src/background/logins';
 import { MAX_LOGINS, parseRecords, remember } from '../src/logins';
 
-const ID = 'pggffblellmckocpflaaeligadjpkahj';
+const ID = 'konofbnhgejkgkonkleipkkpkphbfgee';
 
 /** A local lane of `project` on `host`. */
 function lane(project: string, index: number, host: string): Lane {

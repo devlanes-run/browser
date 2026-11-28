@@ -225,7 +225,7 @@ export const CASES: Case[] = [
   {
     name: 'local',
     title: 'Local lanes only',
-    snapshot: { status: running, devlanes: '0.15.0', view: LOCAL_VIEW, notices: [] },
+    snapshot: { status: running, devlanes: '0.17.0', view: LOCAL_VIEW, notices: [] },
     page: 'https://app.acme.localhost/orders?page=2#latest'
   },
   {
@@ -233,7 +233,7 @@ export const CASES: Case[] = [
     title: 'Boxes with a skipped lane',
     snapshot: {
       status: running,
-      devlanes: '0.15.0',
+      devlanes: '0.17.0',
       view: BOXES_VIEW,
       notices: [
         {
@@ -253,27 +253,27 @@ export const CASES: Case[] = [
   {
     name: 'focus-chip',
     title: 'Keyboard focus on a lane to open the page in',
-    snapshot: { status: running, devlanes: '0.15.0', view: BOXES_VIEW, notices: [] },
+    snapshot: { status: running, devlanes: '0.17.0', view: BOXES_VIEW, notices: [] },
     page: 'https://app.acme.localhost/',
     focus: 'acme@1'
   },
   {
     name: 'focus-picker',
     title: 'Keyboard focus on a box to switch to',
-    snapshot: { status: running, devlanes: '0.15.0', view: BOXES_VIEW, notices: [] },
+    snapshot: { status: running, devlanes: '0.17.0', view: BOXES_VIEW, notices: [] },
     page: 'https://app.acme.localhost/',
     focus: 'fork-b'
   },
   {
     name: 'refusal',
     title: 'Switching a lane that runs here',
-    snapshot: { status: running, devlanes: '0.15.0', view: RUNNING_HERE, notices: [] },
+    snapshot: { status: running, devlanes: '0.17.0', view: RUNNING_HERE, notices: [] },
     clicks: ['fork-b']
   },
   {
     name: 'containers',
     title: 'Containers hold the ports',
-    snapshot: { status: running, devlanes: '0.15.0', view: RUNNING_HERE, notices: [] },
+    snapshot: { status: running, devlanes: '0.17.0', view: RUNNING_HERE, notices: [] },
     answer: (method) =>
       method === 'stop_and_use'
         ? {
@@ -297,7 +297,7 @@ export const CASES: Case[] = [
         state: 'daemon_stopped',
         message: "devlanes isn't running. Run devlanes in a terminal."
       },
-      devlanes: '0.15.0',
+      devlanes: '0.17.0',
       view: LOCAL_VIEW,
       notices: []
     }
@@ -308,6 +308,11 @@ export const CASES: Case[] = [
     snapshot: { status: { state: 'not_installed' }, notices: [] }
   },
   {
+    name: 'not-allowed',
+    title: "Host doesn't allow this extension",
+    snapshot: { status: { state: 'not_allowed' }, notices: [] }
+  },
+  {
     name: 'outdated',
     title: 'Daemon outdated',
     snapshot: {
@@ -315,7 +320,7 @@ export const CASES: Case[] = [
         state: 'outdated',
         message: 'Restart the daemon with devlanes daemon restart.'
       },
-      devlanes: '0.15.0',
+      devlanes: '0.17.0',
       view: LOCAL_VIEW,
       notices: []
     }
@@ -328,27 +333,27 @@ export const CASES: Case[] = [
   {
     name: 'settings',
     title: 'Login settings with saved logins',
-    snapshot: { status: running, devlanes: '0.15.0', view: LOCAL_VIEW, notices: [] },
+    snapshot: { status: running, devlanes: '0.17.0', view: LOCAL_VIEW, notices: [] },
     clicks: ['Login settings']
   },
   {
     name: 'settings-off',
     title: 'Login settings turned off, nothing saved',
-    snapshot: { status: running, devlanes: '0.15.0', view: LOCAL_VIEW, notices: [] },
+    snapshot: { status: running, devlanes: '0.17.0', view: LOCAL_VIEW, notices: [] },
     logins: { settings: { fill: false, remember: false }, saved: [] },
     clicks: ['Login settings']
   },
   {
     name: 'settings-remember-off',
     title: 'Remembering off with logins still saved',
-    snapshot: { status: running, devlanes: '0.15.0', view: LOCAL_VIEW, notices: [] },
+    snapshot: { status: running, devlanes: '0.17.0', view: LOCAL_VIEW, notices: [] },
     logins: { ...SAVED, settings: { fill: true, remember: false } },
     clicks: ['Login settings']
   },
   {
     name: 'settings-delete',
     title: 'Delete asking for a second click',
-    snapshot: { status: running, devlanes: '0.15.0', view: LOCAL_VIEW, notices: [] },
+    snapshot: { status: running, devlanes: '0.17.0', view: LOCAL_VIEW, notices: [] },
     clicks: ['Login settings', 'Delete the saved logins of acme']
   },
   {
@@ -356,7 +361,7 @@ export const CASES: Case[] = [
     title: 'Host stopped',
     snapshot: {
       status: { state: 'host_failed', detail: 'Native host has exited.' },
-      devlanes: '0.15.0',
+      devlanes: '0.17.0',
       view: LOCAL_VIEW,
       notices: []
     }

@@ -38,6 +38,9 @@ jobs:
       - name: Zip the extension
         run: pnpm zip
 
+      - name: Zip the extension for the store
+        run: pnpm zip-store
+
   e2e:
     name: End-to-end tests
     runs-on: ubuntu-latest

@@ -177,6 +177,15 @@ test.describe('the box switch', () => {
   });
 });
 
+test("the popup says when the host doesn't allow this extension", async ({ launch }) => {
+  const lab = await launch({ allowed: false });
+  const popup = await lab.popup(await lab.open('https://app.acme.localhost/'));
+  // This text only shows after Chrome refused the host, so the host never started.
+  await popup.waitForText("This version of devlanes doesn't allow this extension.");
+  await popup.waitForText('Not allowed');
+  expect(lab.host.requests()).toEqual([]);
+});
+
 test('the popup follows the daemon stopping and running again', async ({ launch }) => {
   const lab = await launch({ scenario: { view: LOCAL } });
   await lab.connected();

@@ -1,12 +1,13 @@
 import { LANE_URLS } from '@devlanes/extension/lane-urls';
 
 /**
- * The public key that fixes the extension id at `pggffblellmckocpflaaeligadjpkahj`,
- * the id the devlanes native host allows. Its private key was deleted, since an
- * unpacked build needs only this one.
+ * The Chrome Web Store item's public key. It fixes the extension id at
+ * `konofbnhgejkgkonkleipkkpkphbfgee`, the id the devlanes native host allows.
+ * The store holds the private key. Chrome derives the id from this public key,
+ * so an unpacked build gets the same id as a store install.
  */
 const KEY =
-  'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlQ1Gi5NPRlhTw9l3L4qH4+TbE1a+fxDlYj7sh7mpADw+omKi28jyHOstx5xL5PZYS0j2FRXOoAJ8fVI0EvFqRsHymWubqq61ybdzPLmjTHRuMm2BZ5ofoN1J1oYXJB0vyjH/QQjSbG6tKirFey/Tdzzw0XRbFLULX2qLDndd64qtjPVSe3gKnsxt+hqljv4HfmDBg8VaELOLr9kMR/AVQK7yzEpQ9W6ae0xBx2X8N85bcLAbYJcOOhgbXwg7Y65qKY1jfnnsTZk/fSkd0zQVLmSB6zpae9eq/EL2N53DgUI6HdRdS1aQ/LvAvSu5vpxgTrFznw81EanAxZ21Wk3OAQIDAQAB';
+  'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy3aCwoO0etAdsbEmRXOQUEOON2NfoZD4sgOwIgQ4ZCNMgXXOtboRGyLPEGEJyIhamvmxUWrepof+oa7qrznBLRz2G/lNW5B+Fb+WDQt+pAlEnjOOCc2oGxxjYi+o7NOMIacFyOuOKa5SQkp189u301/+ML1pTL7m3mIfzD8caZEgU/CK4BAt5j0rh6yDahjbn/CsGwognSnNKBYe4R3TTk4mG51Zb7O2Qs+V+mTzNZ80rF2fV2DpAfvD8rWn6LuL1a5+/fPrFf9z+t/5ZCeiP5MeG2/j1Yz9u/V/tBI6p6m+ZSdFV7ktJKdMqwoPmVmdcmCcJHZ/i5UxfTI1zEGtfwIDAQAB';
 
 const ICONS = {
   '16': 'icons/icon-16.png',
@@ -21,7 +22,10 @@ export function manifest(version: string): chrome.runtime.ManifestV3 {
     manifest_version: 3,
     name: 'devlanes',
     version,
-    description: 'The devlanes browser extension.',
+    // The store shows this as the summary and allows at most 132 characters.
+    description:
+      'Open a page in another devlanes lane, choose which box serves a lane, and fill test logins on every lane.',
+    homepage_url: 'https://devlanes.run/docs/how-to/use-the-browser-extension/',
     minimum_chrome_version: '120',
     key: KEY,
     icons: ICONS,

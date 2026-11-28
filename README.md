@@ -46,11 +46,15 @@ pnpm install
 pnpm build
 ```
 
-Open `chrome://extensions` (`edge://extensions` in Edge), turn on Developer mode, click "Load unpacked" and pick `apps/chromium/dist`. The extension id is always `pggffblellmckocpflaaeligadjpkahj`, because the manifest carries a fixed public key.
+Open `chrome://extensions` (`edge://extensions` in Edge), turn on Developer mode, click "Load unpacked" and pick `apps/chromium/dist`. The extension id is always `konofbnhgejkgkonkleipkkpkphbfgee`. The manifest carries the public key of the extension's Chrome Web Store item, so an unpacked build gets the same id as a store install.
 
 The extension needs devlanes 0.16.0 or later. Run `devlanes setup` to register devlanes as the extension's native host, then reopen the popup. [Use the browser extension](https://devlanes.run/docs/how-to/use-the-browser-extension/) lists the browsers setup registers and shows how to add another Chromium browser.
 
 `pnpm zip` packs the build into `apps/chromium/artifacts/`.
+
+## Chrome Web Store
+
+The extension id comes from the store listing, which isn't public yet. `pnpm zip-store` writes the zip to upload to `apps/chromium/artifacts/devlanes-<version>-store.zip`. Its manifest has no `key`, because the store refuses an upload that has one. The listing's privacy policy is https://devlanes.run/privacy/.
 
 ## Develop
 
@@ -71,6 +75,7 @@ pnpm build
 pnpm test-types
 pnpm test
 pnpm zip
+pnpm zip-store
 pnpm e2e
 ```
 
