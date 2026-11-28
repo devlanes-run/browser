@@ -1,6 +1,28 @@
 import { contentWorld } from '../support/content-world';
-import { expect, test } from '../support/extension';
+import { expect, type Lab, test } from '../support/extension';
 import { BOXES, LOCAL, WILDCARD } from '../support/views';
+
+/**
+ * Every lane tab with its URL and index, in tab order, as the browser has it.
+ * A tab still loading counts with the URL it goes to. The tests read this
+ * instead of waiting for the page to load, because on a machine where devlanes
+ * listens on 127.0.0.1:443, a tab the extension opens can reach the devlanes
+ * proxy before the test's route applies to it.
+ */
+async function laneTabs(lab: Lab): Promise<{ url: string; index: number }[]> {
+  const tabs = await lab.worker.evaluate(async () =>
+    (await chrome.tabs.query({})).map((tab) => ({
+      url: tab.pendingUrl ?? tab.url ?? '',
+      index: tab.index
+    }))
+  );
+  return tabs.filter((tab) => /^https:\/\/([a-z0-9-]+\.)*localhost\//.test(tab.url));
+}
+
+/** The URLs of {@link laneTabs}, in tab order. */
+async function laneUrls(lab: Lab): Promise<string[]> {
+  return (await laneTabs(lab)).map((tab) => tab.url);
+}
 
 /** The badge colours from the devlanes palette: paint for this machine, the info blue for a box. */
 const PAINT = [245, 197, 66, 255];
@@ -56,17 +78,16 @@ test('"Open this page in" opens the same page on the other lane, next to the cur
   const page = await lab.open('https://app.acme.localhost/orders/7?tab=items#total');
   const popup = await lab.popup(page);
 
-  const opened = lab.context.waitForEvent('page');
   await popup.clickIn('.chip', 'acme@1');
-  const copy = await opened;
-  await copy.waitForURL('https://app.acme1.localhost/orders/7?tab=items#total');
-  const order = await lab.worker.evaluate(async () =>
-    (await chrome.tabs.query({ url: 'https://*.localhost/*' })).map((tab) => tab.url)
-  );
-  expect(order).toEqual([
-    'https://app.acme.localhost/orders/7?tab=items#total',
-    'https://app.acme1.localhost/orders/7?tab=items#total'
-  ]);
+  await expect
+    .poll(() => laneUrls(lab), { message: 'the other lane opens next to the current tab' })
+    .toEqual([
+      'https://app.acme.localhost/orders/7?tab=items#total',
+      'https://app.acme1.localhost/orders/7?tab=items#total'
+    ]);
+  // laneTabs leaves other tabs out, so only the indexes show that no tab sits between the two.
+  const [source, opened] = await laneTabs(lab);
+  expect(opened!.index).toBe(source!.index + 1);
 });
 
 test('a wildcard route shows without a link, and a tenant page opens on the other lane', async ({
@@ -85,10 +106,13 @@ test('a wildcard route shows without a link, and a tenant page opens on the othe
   expect(await popup.texts('.lane.here .routes .wild')).toEqual(['*.sites.acme.localhost']);
   expect(await popup.texts('.lane.here .routes a')).toEqual(['app.acme.localhost']);
 
-  const opened = lab.context.waitForEvent('page');
   await popup.clickIn('.chip', 'acme@1');
-  const copy = await opened;
-  await copy.waitForURL('https://t1.sites.acme1.localhost/about?x=1#team');
+  await expect
+    .poll(() => laneUrls(lab), { message: 'the tenant page opens on the other lane' })
+    .toEqual([
+      'https://t1.sites.acme.localhost/about?x=1#team',
+      'https://t1.sites.acme1.localhost/about?x=1#team'
+    ]);
 });
 
 test("a lane page's content script can't open the popup's port", async ({ launch }) => {
